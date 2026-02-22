@@ -3,25 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ChatMyIdeas — Blog Digital Twin</title>
+  <title>ChatMyIdeas — Browser Local</title>
+  <!-- Readability for clean article text extraction -->
+  <script src="https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #22263a;
-      --border: #2e3352;
-      --accent: #6c8ef7;
+      --bg:          #0f1117;
+      --surface:     #1a1d27;
+      --surface2:    #22263a;
+      --border:      #2e3352;
+      --accent:      #6c8ef7;
       --accent-dark: #4a6cf7;
-      --text: #e2e8f0;
-      --text-muted: #8892b0;
+      --text:        #e2e8f0;
+      --text-muted:  #8892b0;
       --user-bubble: #2d3a6e;
-      --bot-bubble: #1e2438;
-      --error: #f87171;
-      --success: #4ade80;
-      --radius: 12px;
-      --radius-sm: 8px;
+      --bot-bubble:  #1e2438;
+      --error:       #f87171;
+      --success:     #4ade80;
+      --warn:        #fbbf24;
+      --radius:      12px;
+      --radius-sm:   8px;
     }
 
     body {
@@ -34,241 +37,176 @@
       overflow: hidden;
     }
 
-    /* ── Header ──────────────────────────────────────────────────────────── */
-    header {
-      padding: 12px 24px;
-      background: var(--surface);
+    /* ── Model bar ───────────────────────────────────────────────────────── */
+    #model-bar {
+      background: #0a0d14;
       border-bottom: 1px solid var(--border);
+      padding: 6px 20px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 20px;
       flex-shrink: 0;
+      font-size: 0.75rem;
+      flex-wrap: wrap;
     }
-    .logo { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.5px; }
-    .logo span { color: var(--accent); }
-    .header-sub { font-size: 0.75rem; color: var(--text-muted); }
-    .status-pill {
-      margin-left: auto;
-      padding: 3px 10px;
-      border-radius: 99px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      background: var(--surface2);
-      color: var(--text-muted);
-      border: 1px solid var(--border);
-      display: flex; align-items: center; gap: 5px;
+    .mb-item { display: flex; align-items: center; gap: 7px; }
+    .mb-label { color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; font-size: 0.65rem; }
+    .mb-status { font-size: 0.72rem; }
+    .mb-status.ok   { color: var(--success); }
+    .mb-status.warn { color: var(--warn); }
+    .mb-status.err  { color: var(--error); }
+    .mb-sep { width: 1px; height: 18px; background: var(--border); }
+    .llm-select {
+      padding: 3px 7px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text); font-size: 0.72rem; outline: none;
     }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
-    .status-dot.ok { background: var(--success); }
+    .llm-select:focus { border-color: var(--accent); }
+    #llm-progress-wrap { display: none; align-items: center; gap: 6px; }
+    #llm-bar { width: 100px; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    #llm-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+    #gpu-pill {
+      margin-left: auto; font-size: 0.65rem; padding: 2px 8px; border-radius: 99px;
+      border: 1px solid var(--border); background: var(--surface2);
+    }
+    #gpu-pill.ok   { border-color: var(--success); color: var(--success); }
+    #gpu-pill.warn { border-color: var(--warn);    color: var(--warn); }
 
-    /* ── Main layout ──────────────────────────────────────────────────────── */
-    main {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
-
-    /* ── Sidebar ─────────────────────────────────────────────────────────── */
-    aside {
-      width: 300px;
+    /* ── Header ──────────────────────────────────────────────────────────── */
+    header {
+      padding: 10px 24px;
       background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
       flex-shrink: 0;
     }
-    .sidebar-section {
-      padding: 16px;
-      border-bottom: 1px solid var(--border);
+    .logo { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.5px; }
+    .logo span { color: var(--accent); }
+    .badge {
+      display: inline-block; padding: 1px 7px; border-radius: 99px;
+      font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+      background: var(--accent-dark); color: #fff; margin-left: 6px; vertical-align: middle;
     }
+    .header-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
+
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    main { flex: 1; display: flex; overflow: hidden; }
+
+    aside {
+      width: 300px; background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+    }
+    .sidebar-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
     .sidebar-section h3 {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
-      margin-bottom: 10px;
+      font-size: 0.65rem; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;
     }
 
-    /* Ingest form */
-    .ingest-url {
-      width: 100%;
-      padding: 8px 10px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 0.85rem;
-      outline: none;
+    /* Inputs */
+    .field-url {
+      width: 100%; padding: 8px 10px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 0.82rem; outline: none; margin-bottom: 6px;
       transition: border-color 0.2s;
-      margin-bottom: 6px;
     }
-    .ingest-url:focus { border-color: var(--accent); }
-    .ingest-url::placeholder { color: var(--text-muted); }
+    .field-url:focus { border-color: var(--accent); }
+    .field-url::placeholder { color: var(--text-muted); }
 
+    .author-select {
+      width: 100%; padding: 7px 10px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 0.82rem; outline: none;
+    }
+    .author-select:focus { border-color: var(--accent); }
+
+    /* Buttons */
     .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-      padding: 7px 14px;
-      border-radius: var(--radius-sm);
-      border: none;
-      cursor: pointer;
-      font-size: 0.82rem;
-      font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      padding: 7px 14px; border-radius: var(--radius-sm); border: none;
+      cursor: pointer; font-size: 0.82rem; font-weight: 600;
       transition: opacity 0.15s, transform 0.1s;
     }
-    .btn:hover:not(:disabled) { opacity: 0.9; }
+    .btn:hover:not(:disabled) { opacity: 0.88; }
     .btn:active:not(:disabled) { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn:disabled { opacity: 0.38; cursor: not-allowed; }
     .btn-primary { background: var(--accent); color: #fff; }
-    #ingest-btn  { width: 100%; }
-    .btn-danger  { background: #7f1d1d; color: #fca5a5; padding: 4px 8px; font-size: 0.75rem; }
-    .btn-ghost   { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-full    { width: 100%; }
+    .btn-sm      { padding: 3px 10px; font-size: 0.72rem; }
+    .btn-danger  { background: #7f1d1d; color: #fca5a5; padding: 4px 8px; font-size: 0.72rem; }
+
+    /* Ingest progress */
+    #ingest-prog { display: none; margin-top: 8px; }
+    .prog-bar { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .prog-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s; }
+    #ingest-msg { font-size: 0.68rem; color: var(--text-muted); margin-top: 4px; text-align: center; }
 
     /* Blog list */
     .blog-list { flex: 1; overflow-y: auto; }
     .blog-item {
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      transition: background 0.15s;
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.15s;
       display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;
     }
     .blog-item:hover { background: var(--surface2); }
     .blog-item.active { background: var(--surface2); border-left: 3px solid var(--accent); padding-left: 13px; }
-    .blog-meta { min-width: 0; }
-    .blog-item-title { font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .blog-item-sub { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
-    .blog-item-authors { font-size: 0.68rem; color: var(--accent); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    /* Author select */
-    .author-select {
-      width: 100%;
-      padding: 7px 10px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 0.82rem;
-      outline: none;
-    }
-    .author-select:focus { border-color: var(--accent); }
+    .blog-meta { min-width: 0; flex: 1; }
+    .blog-title { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .blog-sub   { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
+    .blog-auth  { font-size: 0.66rem; color: var(--accent); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* ── Chat area ───────────────────────────────────────────────────────── */
-    .chat-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+    .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
-    /* Empty state */
     .empty-state {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 14px;
-      color: var(--text-muted);
-      text-align: center;
-      padding: 40px;
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; color: var(--text-muted); text-align: center; padding: 40px;
     }
     .empty-icon { font-size: 3rem; }
-    .empty-state h2 { font-size: 1.2rem; color: var(--text); }
-    .empty-state p  { font-size: 0.85rem; max-width: 360px; line-height: 1.6; }
+    .empty-state h2 { font-size: 1.15rem; color: var(--text); }
+    .empty-state p  { font-size: 0.82rem; max-width: 360px; line-height: 1.6; }
 
-    /* Messages */
     #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+      flex: 1; overflow-y: auto; padding: 20px 24px;
+      display: flex; flex-direction: column; gap: 16px;
     }
-    .message { display: flex; gap: 10px; align-items: flex-start; max-width: 100%; }
-    .message.user  { flex-direction: row-reverse; }
+    .message { display: flex; gap: 10px; align-items: flex-start; }
+    .message.user { flex-direction: row-reverse; }
     .avatar {
-      width: 32px; height: 32px; border-radius: 50%;
+      width: 30px; height: 30px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 0.9rem; flex-shrink: 0;
+      font-size: 0.85rem; flex-shrink: 0;
     }
-    .message.user  .avatar { background: var(--accent-dark); }
-    .message.bot   .avatar { background: var(--surface2); border: 1px solid var(--border); }
+    .message.user .avatar { background: var(--accent-dark); }
+    .message.bot  .avatar { background: var(--surface2); border: 1px solid var(--border); }
     .bubble {
-      max-width: 75%;
-      padding: 10px 14px;
+      max-width: 78%; padding: 10px 14px; font-size: 0.86rem;
+      line-height: 1.65; white-space: pre-wrap; word-break: break-word;
       border-radius: var(--radius);
-      font-size: 0.88rem;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-break: break-word;
     }
     .message.user .bubble { background: var(--user-bubble); border-radius: var(--radius) 4px var(--radius) var(--radius); }
-    .message.bot  .bubble { background: var(--bot-bubble); border-radius: 4px var(--radius) var(--radius) var(--radius); border: 1px solid var(--border); }
-    .sources {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid var(--border);
-      font-size: 0.72rem;
-      color: var(--text-muted);
-    }
+    .message.bot  .bubble { background: var(--bot-bubble); border: 1px solid var(--border); border-radius: 4px var(--radius) var(--radius) var(--radius); }
+    .sources { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 0.7rem; color: var(--text-muted); }
     .sources a { color: var(--accent); text-decoration: none; margin-left: 4px; }
     .sources a:hover { text-decoration: underline; }
 
-    /* Typing indicator */
-    .typing .bubble { padding: 12px 16px; }
+    .typing .bubble { padding: 14px 16px; }
     .typing-dots { display: flex; gap: 4px; align-items: center; }
-    .typing-dots span {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--text-muted);
-      animation: bounce 1.2s infinite;
-    }
+    .typing-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); animation: bounce 1.2s infinite; }
     .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
     .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes bounce {
-      0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
-      40% { transform: scale(1); opacity: 1; }
-    }
+    @keyframes bounce { 0%,80%,100%{transform:scale(0.7);opacity:0.5} 40%{transform:scale(1);opacity:1} }
 
-    /* Progress bar */
-    .progress-bar-wrap { padding: 0 16px 10px; }
-    .progress-bar {
-      height: 3px; background: var(--border); border-radius: 99px; overflow: hidden;
-    }
-    .progress-bar-fill {
-      height: 100%; background: var(--accent);
-      animation: indeterminate 1.5s infinite;
-    }
-    @keyframes indeterminate {
-      0%   { transform: translateX(-100%); width: 50%; }
-      100% { transform: translateX(250%);  width: 50%; }
-    }
-
-    /* Input row */
     .input-row {
-      display: flex;
-      gap: 8px;
-      padding: 12px 24px 16px;
-      border-top: 1px solid var(--border);
-      background: var(--surface);
-      flex-shrink: 0;
+      display: flex; gap: 8px; padding: 12px 24px 16px;
+      border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0;
     }
     #message-input {
-      flex: 1;
-      resize: none;
-      min-height: 42px;
-      max-height: 120px;
-      padding: 10px 14px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 0.88rem;
-      line-height: 1.5;
-      outline: none;
-      font-family: inherit;
-      transition: border-color 0.2s;
+      flex: 1; resize: none; min-height: 42px; max-height: 120px;
+      padding: 10px 14px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 0.86rem; line-height: 1.5;
+      outline: none; font-family: inherit; transition: border-color 0.2s;
     }
     #message-input:focus { border-color: var(--accent); }
     #message-input::placeholder { color: var(--text-muted); }
@@ -278,277 +216,628 @@
     /* Toast */
     #toast {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      padding: 10px 20px; border-radius: var(--radius);
-      font-size: 0.82rem; font-weight: 600;
+      padding: 10px 20px; border-radius: var(--radius); font-size: 0.8rem; font-weight: 600;
       background: var(--surface2); border: 1px solid var(--border);
       opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999;
     }
     #toast.show { opacity: 1; }
-    #toast.error { border-color: var(--error); color: var(--error); }
-    #toast.success { border-color: var(--success); color: var(--success); }
+    #toast.error   { border-color: var(--error);   color: var(--error); }
+    #toast.success { border-color: var(--success);  color: var(--success); }
 
-    /* Scrollbar */
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
   </style>
 </head>
 <body>
 
+<!-- ── Model bar ─────────────────────────────────────────────────────────── -->
+<div id="model-bar">
+  <div class="mb-item">
+    <span class="mb-label">Embedder</span>
+    <span class="mb-status" id="embed-status">starting…</span>
+  </div>
+  <div class="mb-sep"></div>
+  <div class="mb-item">
+    <span class="mb-label">LLM</span>
+    <select class="llm-select" id="llm-select">
+      <option value="Llama-3.2-1B-Instruct-q4f32_1-MLC">Llama 3.2 · 1B (~800 MB)</option>
+      <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2 · 1.7B (~1 GB)</option>
+      <option value="gemma-2-2b-it-q4f16_1-MLC">Gemma 2 · 2B (~1.5 GB)</option>
+      <option value="Llama-3.2-3B-Instruct-q4f32_1-MLC">Llama 3.2 · 3B (~2 GB)</option>
+      <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi 3.5 Mini (~2.2 GB)</option>
+    </select>
+    <button class="btn btn-sm btn-primary" id="load-llm-btn">Load</button>
+    <div id="llm-progress-wrap">
+      <div id="llm-bar"><div id="llm-bar-fill"></div></div>
+      <span id="llm-pct" style="font-size:0.68rem;color:var(--text-muted)">0%</span>
+    </div>
+    <span class="mb-status" id="llm-status">not loaded</span>
+  </div>
+  <span id="gpu-pill">WebGPU …</span>
+</div>
+
+<!-- ── Header ────────────────────────────────────────────────────────────── -->
 <header>
   <div>
-    <div class="logo">Chat<span>MyIdeas</span></div>
-    <div class="header-sub">Blog Digital Twin</div>
-  </div>
-  <div class="status-pill" id="status-pill">
-    <div class="status-dot" id="status-dot"></div>
-    <span id="status-text">checking…</span>
+    <div class="logo">Chat<span>MyIdeas</span> <span class="badge">Browser Local</span></div>
+    <div class="header-sub">Embeddings &amp; LLM run entirely in your browser via WebGPU — no server AI needed</div>
   </div>
 </header>
 
+<!-- ── Main ──────────────────────────────────────────────────────────────── -->
 <main>
-  <!-- Sidebar -->
   <aside>
-    <!-- Ingest section -->
     <div class="sidebar-section">
       <h3>Add Blog</h3>
-      <input class="ingest-url" id="blog-url-input" type="url"
+      <input class="field-url" id="blog-url-input" type="url"
              placeholder="https://example.com/blog" autocomplete="off" />
-      <button class="btn btn-primary" id="ingest-btn">⚡ Create Twin</button>
-      <div id="ingest-progress" style="display:none; margin-top:8px;">
-        <div class="progress-bar"><div class="progress-bar-fill"></div></div>
-        <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;text-align:center;">Ingesting articles…</div>
+      <button class="btn btn-primary btn-full" id="ingest-btn">⚡ Create Twin</button>
+      <div id="ingest-prog">
+        <div class="prog-bar"><div class="prog-bar-fill" id="ingest-bar"></div></div>
+        <div id="ingest-msg">Fetching…</div>
       </div>
     </div>
 
-    <!-- Author filter -->
-    <div class="sidebar-section" id="author-section" style="display:none;">
+    <div class="sidebar-section" id="author-section" style="display:none">
       <h3>Author</h3>
       <select class="author-select" id="author-select">
         <option value="">All authors</option>
       </select>
     </div>
 
-    <!-- Blog list -->
     <div class="blog-list" id="blog-list"></div>
   </aside>
 
-  <!-- Chat area -->
   <div class="chat-area" id="chat-area">
     <div class="empty-state" id="empty-state">
       <div class="empty-icon">🧠</div>
-      <h2>Start chatting with a digital twin</h2>
-      <p>Paste a blog URL in the sidebar and click <strong>Create Twin</strong>.
-         ChatMyIdeas will read all articles and let you have a conversation with the author's ideas.</p>
+      <h2>Chat with a blog's ideas — locally</h2>
+      <p>Paste a blog URL, click <strong>Create Twin</strong>, then start chatting.<br>
+         The LLM and embeddings run in your browser — nothing leaves your machine.</p>
     </div>
-    <!-- Messages will be injected here by JS -->
   </div>
 </main>
 
 <div id="toast"></div>
 
-<script>
-const API = '/api/v1';
+<!-- ── Application ───────────────────────────────────────────────────────── -->
+<script type="module">
+
+import * as webllm from 'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm';
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js';
+
+// ── Config ──────────────────────────────────────────────────────────────────
+const CHUNK_WORDS   = 200;
+const CHUNK_OVERLAP = 30;
+const TOP_K         = 5;
+const MAX_HISTORY   = 10;
+const EMBED_MODEL   = 'Xenova/all-MiniLM-L6-v2';
+const MAX_ARTICLES  = 60;
+
+// ── Global state ─────────────────────────────────────────────────────────────
+let embedder    = null;   // Transformers.js pipeline
+let llmEngine   = null;   // WebLLM engine
+let db          = null;   // IndexedDB
 let activeBlogId = null;
-let history = [];
+let activeAuthor = null;
+let history     = [];
+const memChunks = new Map(); // blogId -> chunk[]
 
-// ── DOM refs ──────────────────────────────────────────────────────────────────
-const blogUrlInput = document.getElementById('blog-url-input');
-const ingestBtn    = document.getElementById('ingest-btn');
-const ingestProg   = document.getElementById('ingest-progress');
-const blogList     = document.getElementById('blog-list');
-const chatArea     = document.getElementById('chat-area');
-const emptyState   = document.getElementById('empty-state');
-const authorSec    = document.getElementById('author-section');
-const authorSel    = document.getElementById('author-select');
-const statusPill   = document.getElementById('status-pill');
-const statusDot    = document.getElementById('status-dot');
-const statusText   = document.getElementById('status-text');
+// ── IndexedDB ─────────────────────────────────────────────────────────────────
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('chatmyideas_v1', 1);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('blogs'))
+        d.createObjectStore('blogs', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('chunks')) {
+        const s = d.createObjectStore('chunks', { keyPath: 'id' });
+        s.createIndex('blogId', 'blogId', { unique: false });
+      }
+    };
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
 
-// ── Health check ──────────────────────────────────────────────────────────────
-async function checkHealth() {
+function tx(store, mode, fn) {
+  return new Promise((res, rej) => {
+    const t = db.transaction(store, mode);
+    const s = t.objectStore(store);
+    const req = fn(s);
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+const dbPut    = (store, obj)       => tx(store, 'readwrite', s => s.put(obj));
+const dbDel    = (store, key)       => tx(store, 'readwrite', s => s.delete(key));
+const dbAll    = store              => tx(store, 'readonly',  s => s.getAll());
+const dbByIdx  = (store, idx, val)  => new Promise((res, rej) => {
+  const t = db.transaction(store, 'readonly');
+  const req = t.objectStore(store).index(idx).getAll(val);
+  req.onsuccess = () => res(req.result);
+  req.onerror   = () => rej(req.error);
+});
+const dbDelIdx = (store, idx, val)  => new Promise((res, rej) => {
+  const t = db.transaction(store, 'readonly');
+  const kr = t.objectStore(store).index(idx).getAllKeys(val);
+  kr.onsuccess = () => {
+    const t2 = db.transaction(store, 'readwrite');
+    const s2 = t2.objectStore(store);
+    kr.result.forEach(k => s2.delete(k));
+    t2.oncomplete = res;
+    t2.onerror    = () => rej(t2.error);
+  };
+  kr.onerror = () => rej(kr.error);
+});
+
+// ── Embedder (Transformers.js) ────────────────────────────────────────────────
+async function initEmbedder() {
+  env.allowLocalModels = false;
+  env.useBrowserCache  = true;
+  setEmbedStatus('Downloading…', '');
+  embedder = await pipeline('feature-extraction', EMBED_MODEL, {
+    progress_callback: ({ status, progress, file }) => {
+      if (status === 'progress')
+        setEmbedStatus(`${file ? file.split('/').pop() : ''} ${Math.round(progress)}%`, '');
+    },
+  });
+  setEmbedStatus('Ready', 'ok');
+}
+
+async function embed(texts) {
+  if (!embedder) throw new Error('Embedder not ready yet — please wait.');
+  const out  = await embedder(texts, { pooling: 'mean', normalize: true });
+  const dim  = out.dims[1];
+  return texts.map((_, i) => Array.from(out.data.slice(i * dim, (i + 1) * dim)));
+}
+
+// ── LLM (WebLLM / WebGPU) ────────────────────────────────────────────────────
+async function initLLM(modelId) {
+  setLLMStatus('Loading…', '');
+  document.getElementById('llm-progress-wrap').style.display = 'flex';
+  document.getElementById('load-llm-btn').disabled = true;
+
+  llmEngine = await webllm.CreateMLCEngine(modelId, {
+    initProgressCallback: ({ progress, text }) => {
+      const pct = Math.round((progress || 0) * 100);
+      document.getElementById('llm-bar-fill').style.width = pct + '%';
+      document.getElementById('llm-pct').textContent = pct + '%';
+    },
+  });
+
+  document.getElementById('llm-progress-wrap').style.display = 'none';
+  document.getElementById('load-llm-btn').disabled = false;
+  setLLMStatus('Ready ✓', 'ok');
+}
+
+async function* streamLLM(messages) {
+  if (!llmEngine) throw new Error('LLM not loaded — click "Load" in the toolbar.');
+  const stream = await llmEngine.chat.completions.create({
+    messages,
+    stream: true,
+    max_tokens: 1024,
+    temperature: 0.7,
+  });
+  for await (const chunk of stream) {
+    const delta = chunk.choices[0]?.delta?.content;
+    if (delta) yield delta;
+  }
+}
+
+// ── URL proxy ─────────────────────────────────────────────────────────────────
+async function fetchURL(url) {
+  const r = await fetch('/api/proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+  if (!r.ok) throw new Error(`Proxy error ${r.status}: ${r.statusText}`);
+  return r.json(); // { url, status, content_type, text }
+}
+
+// ── Text utilities ────────────────────────────────────────────────────────────
+function hashStr(str) {
+  str = str.trim().replace(/\/$/, '');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+function chunkText(text, size = CHUNK_WORDS, overlap = CHUNK_OVERLAP) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const out = [];
+  let start = 0;
+  while (start < words.length) {
+    const end = Math.min(start + size, words.length);
+    out.push(words.slice(start, end).join(' '));
+    if (end === words.length) break;
+    start += size - overlap;
+  }
+  return out;
+}
+
+// ── Blog / RSS parsing ────────────────────────────────────────────────────────
+function parseRSS(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  if (doc.querySelector('parsererror')) return null;
+  const items = [...doc.querySelectorAll('item, entry')];
+  if (!items.length) return null;
+
+  return items.slice(0, MAX_ARTICLES).map(item => {
+    const t = k => item.querySelector(k)?.textContent?.trim() || '';
+    const title  = t('title') || 'Untitled';
+    const link   = t('link') || item.querySelector('link')?.getAttribute('href') || '';
+    const raw    = t('content\\:encoded') || t('content') || t('summary') || t('description');
+    const content = new DOMParser().parseFromString(raw, 'text/html').body.textContent?.trim() || '';
+    const author  = t('author name') || t('dc\\:creator') || t('author') || null;
+    const pub     = t('pubDate') || t('published') || t('updated') || null;
+    return { title, url: link, content, author: author || null, published: pub };
+  }).filter(a => a.url && a.content.length > 80);
+}
+
+function parseHTML(html, baseUrl) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const base = doc.createElement('base'); base.href = baseUrl; doc.head.prepend(base);
+
+  // Feed link?
+  const feedEl = doc.querySelector(
+    'link[rel="alternate"][type*="rss"], link[rel="alternate"][type*="atom"]'
+  );
+  const feedUrl = feedEl ? new URL(feedEl.getAttribute('href'), baseUrl).href : null;
+
+  // Article-like links
+  const ARTICLE_RE = /\/(post|blog|article|entry|p|story|news|writing|essay|note)\//i;
+  const seen = new Set([baseUrl]);
+  const articleLinks = [];
+  for (const a of doc.querySelectorAll('a[href]')) {
+    try {
+      const href = new URL(a.getAttribute('href'), baseUrl).href.split('#')[0].split('?')[0];
+      if (!seen.has(href) && new URL(href).hostname === new URL(baseUrl).hostname) {
+        if (ARTICLE_RE.test(new URL(href).pathname)) { seen.add(href); articleLinks.push(href); }
+      }
+    } catch {}
+  }
+
+  // Readability on the page itself (single article?)
+  let single = null;
   try {
-    const r = await fetch(`${API}/health`);
-    const d = await r.json();
-    if (d.ollama_available) {
-      statusDot.className = 'status-dot ok';
-      statusText.textContent = `Ollama · ${d.model}`;
-    } else {
-      statusDot.className = 'status-dot';
-      statusText.textContent = `Ollama offline`;
+    const clone  = doc.cloneNode(true);
+    const reader = new Readability(clone);
+    const art    = reader.parse();
+    if (art?.textContent?.trim().length > 200)
+      single = { title: art.title, content: art.textContent.trim(), author: art.byline || null };
+  } catch {}
+
+  return { feedUrl, articleLinks, single };
+}
+
+function readArticle(html, url) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const base = doc.createElement('base'); base.href = url; doc.head.prepend(base);
+  try {
+    const art = new Readability(doc.cloneNode(true)).parse();
+    if (art?.textContent?.trim().length > 100)
+      return { title: art.title, content: art.textContent.trim(), author: art.byline || null };
+  } catch {}
+  return null;
+}
+
+// ── Ingestion pipeline ────────────────────────────────────────────────────────
+async function ingestBlog(url, onProg) {
+  const id = hashStr(url);
+  onProg(0.02, 'Fetching URL…');
+
+  const { content_type, text, url: finalUrl } = await fetchURL(url);
+  let rawArticles = [];
+
+  // 1. Direct feed?
+  if (/xml|rss|atom/.test(content_type)) rawArticles = parseRSS(text) || [];
+
+  // 2. HTML — find feed / article links
+  if (!rawArticles.length) {
+    const { feedUrl, articleLinks, single } = parseHTML(text, finalUrl || url);
+
+    if (feedUrl) {
+      onProg(0.05, 'Found feed, fetching…');
+      try { rawArticles = parseRSS((await fetchURL(feedUrl)).text) || []; } catch {}
     }
-  } catch {
-    statusDot.className = 'status-dot';
-    statusText.textContent = 'API offline';
-  }
-}
 
-// ── Blog list ─────────────────────────────────────────────────────────────────
-async function loadBlogs() {
-  try {
-    const r = await fetch(`${API}/blogs`);
-    const blogs = await r.json();
-    blogList.innerHTML = '';
-    blogs.forEach(b => {
-      const el = document.createElement('div');
-      el.className = 'blog-item' + (b.id === activeBlogId ? ' active' : '');
-      el.dataset.id = b.id;
-      el.innerHTML = `
-        <div class="blog-meta" style="min-width:0;flex:1;">
-          <div class="blog-item-title" title="${esc(b.title)}">${esc(b.title)}</div>
-          <div class="blog-item-sub">${b.article_count} articles</div>
-          ${b.authors.length ? `<div class="blog-item-authors">✍ ${esc(b.authors.join(', '))}</div>` : ''}
-        </div>
-        <button class="btn btn-danger del-btn" data-id="${b.id}" title="Delete">✕</button>
-      `;
-      el.querySelector('.blog-meta').addEventListener('click', () => selectBlog(b));
-      el.querySelector('.del-btn').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        await deleteBlog(b.id, el);
+    if (!rawArticles.length && articleLinks.length) {
+      const links = articleLinks.slice(0, MAX_ARTICLES);
+      onProg(0.08, `Found ${links.length} article links…`);
+      for (let i = 0; i < links.length; i++) {
+        onProg(0.08 + (i / links.length) * 0.32, `Fetching article ${i + 1}/${links.length}…`);
+        try {
+          const d   = await fetchURL(links[i]);
+          const art = readArticle(d.text, links[i]);
+          if (art) rawArticles.push({ url: links[i], ...art });
+        } catch {}
+      }
+    }
+
+    // 3. Single article fallback
+    if (!rawArticles.length && single) rawArticles.push({ url: finalUrl || url, ...single });
+  }
+
+  if (!rawArticles.length) throw new Error('No articles found at this URL.');
+
+  onProg(0.42, `Processing ${rawArticles.length} articles…`);
+
+  // Build chunks
+  const chunks = [];
+  for (const art of rawArticles) {
+    for (const txt of chunkText(art.content)) {
+      chunks.push({
+        id: `${id}_${chunks.length}`,
+        blogId: id,
+        articleUrl:   art.url,
+        articleTitle: art.title || art.url,
+        author:       art.author || null,
+        text:         txt,
+        embedding:    null,
       });
-      blogList.appendChild(el);
+    }
+  }
+
+  // Embed in batches
+  const BATCH = 8;
+  for (let i = 0; i < chunks.length; i += BATCH) {
+    const batch = chunks.slice(i, i + BATCH);
+    onProg(0.42 + (i / chunks.length) * 0.5, `Embedding ${i + 1}–${Math.min(i + BATCH, chunks.length)} / ${chunks.length}…`);
+    const embs = await embed(batch.map(c => c.text));
+    embs.forEach((e, j) => { batch[j].embedding = e; });
+  }
+
+  // Persist
+  onProg(0.93, 'Saving to browser storage…');
+  const authors = [...new Set(rawArticles.map(a => a.author).filter(Boolean))];
+  const blog = {
+    id,
+    url,
+    title: rawArticles[0]?.title || url,
+    authors,
+    articleCount: rawArticles.length,
+    createdAt: new Date().toISOString(),
+  };
+
+  await dbPut('blogs', blog);
+  for (const c of chunks) await dbPut('chunks', c);
+
+  memChunks.set(id, chunks);
+  onProg(1, 'Done!');
+  return blog;
+}
+
+// ── Vector search ─────────────────────────────────────────────────────────────
+function cosine(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+  return dot / (Math.sqrt(na * nb) + 1e-8);
+}
+
+function search(qEmb, blogId, author, k) {
+  return (memChunks.get(blogId) || [])
+    .filter(c => !author || c.author === author)
+    .map(c => ({ ...c, score: cosine(qEmb, c.embedding) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, k);
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+const TWIN_PROMPT = `You are a digital twin of {author}.
+You embody the knowledge, writing style, perspectives, and ideas expressed in their published articles.
+
+When answering:
+- Draw exclusively from the ideas in the provided article excerpts.
+- Maintain the author's characteristic voice and intellectual tone.
+- If a question goes beyond the articles, acknowledge this while staying in character.
+- Never fabricate facts or opinions not supported by the excerpts.
+- Cite article titles naturally when relevant.
+
+--- Article excerpts ---
+{context}
+--- End of excerpts ---`;
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let _toast; function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `show ${type}`;
+  clearTimeout(_toast); _toast = setTimeout(() => el.className = '', 3500);
+}
+
+function setEmbedStatus(txt, cls) {
+  const el = document.getElementById('embed-status');
+  el.textContent = txt; el.className = `mb-status ${cls}`;
+}
+function setLLMStatus(txt, cls) {
+  const el = document.getElementById('llm-status');
+  el.textContent = txt; el.className = `mb-status ${cls}`;
+}
+
+function setIngestProg(ratio, msg) {
+  document.getElementById('ingest-prog').style.display = '';
+  document.getElementById('ingest-bar').style.width = (ratio * 100) + '%';
+  document.getElementById('ingest-msg').textContent = msg;
+}
+
+async function renderBlogList() {
+  const blogs = await dbAll('blogs');
+  const el = document.getElementById('blog-list');
+  el.innerHTML = '';
+  blogs.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).forEach(b => {
+    const div = document.createElement('div');
+    div.className = 'blog-item' + (b.id === activeBlogId ? ' active' : '');
+    div.dataset.id = b.id;
+    div.innerHTML = `
+      <div class="blog-meta">
+        <div class="blog-title" title="${esc(b.title)}">${esc(b.title)}</div>
+        <div class="blog-sub">${b.articleCount} articles</div>
+        ${b.authors.length ? `<div class="blog-auth">✍ ${esc(b.authors.join(', '))}</div>` : ''}
+      </div>
+      <button class="btn btn-danger del-btn" data-id="${b.id}">✕</button>`;
+    div.querySelector('.blog-meta').addEventListener('click', () => selectBlog(b));
+    div.querySelector('.del-btn').addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm('Delete this blog twin?')) return;
+      await dbDel('blogs', b.id);
+      await dbDelIdx('chunks', 'blogId', b.id);
+      memChunks.delete(b.id);
+      if (activeBlogId === b.id) resetChat();
+      div.remove();
+      toast('Blog deleted', 'success');
     });
-  } catch (e) {
-    console.error(e);
-  }
+    el.appendChild(div);
+  });
 }
 
-async function deleteBlog(id, el) {
-  if (!confirm('Delete this blog twin?')) return;
-  const r = await fetch(`${API}/blogs/${id}`, { method: 'DELETE' });
-  if (r.ok || r.status === 204) {
-    el.remove();
-    if (activeBlogId === id) resetChat();
-    toast('Blog deleted', 'success');
-  }
-}
-
-// ── Select blog ───────────────────────────────────────────────────────────────
 function selectBlog(b) {
   activeBlogId = b.id;
   history = [];
-  document.querySelectorAll('.blog-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.id === b.id);
-  });
-
-  // Populate author selector
+  document.querySelectorAll('.blog-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === b.id)
+  );
+  const authorSec = document.getElementById('author-section');
+  const authorSel = document.getElementById('author-select');
   authorSel.innerHTML = '<option value="">All authors</option>';
   (b.authors || []).forEach(a => {
-    const opt = document.createElement('option');
-    opt.value = a; opt.textContent = a;
-    authorSel.appendChild(opt);
+    const o = document.createElement('option'); o.value = a; o.textContent = a;
+    authorSel.appendChild(o);
   });
   authorSec.style.display = b.authors.length > 1 ? '' : 'none';
-
   buildChatUI(b);
 }
 
 function resetChat() {
-  activeBlogId = null;
-  history = [];
-  authorSec.style.display = 'none';
-  chatArea.innerHTML = '';
-  chatArea.appendChild(emptyState);
-  emptyState.style.display = '';
+  activeBlogId = null; history = [];
+  const area = document.getElementById('chat-area');
+  area.innerHTML = '';
+  const es = document.getElementById('empty-state') || (() => {
+    const d = document.createElement('div');
+    d.id = 'empty-state'; d.className = 'empty-state';
+    d.innerHTML = `<div class="empty-icon">🧠</div>
+      <h2>Chat with a blog's ideas — locally</h2>
+      <p>Paste a blog URL, click <strong>Create Twin</strong>, then start chatting.</p>`;
+    return d;
+  })();
+  area.appendChild(es);
 }
 
-// ── Chat UI ───────────────────────────────────────────────────────────────────
 function buildChatUI(b) {
-  chatArea.innerHTML = `
+  const area = document.getElementById('chat-area');
+  area.innerHTML = `
     <div id="messages"></div>
     <div class="input-row">
       <textarea id="message-input" rows="1"
         placeholder="Ask ${esc(b.authors[0] || 'the author')} anything…"></textarea>
       <button class="btn btn-primary" id="send-btn">➤</button>
-    </div>
-  `;
+    </div>`;
 
-  const msgEl   = document.getElementById('messages');
-  const input   = document.getElementById('message-input');
-  const sendBtn = document.getElementById('send-btn');
+  const msgs   = document.getElementById('messages');
+  const input  = document.getElementById('message-input');
+  const sendBt = document.getElementById('send-btn');
 
-  // Auto-resize textarea
   input.addEventListener('input', () => {
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 120) + 'px';
   });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+  sendBt.addEventListener('click', send);
 
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  });
-  sendBtn.addEventListener('click', sendMessage);
-
-  async function sendMessage() {
+  async function send() {
     const text = input.value.trim();
     if (!text || !activeBlogId) return;
+    if (!llmEngine) { toast('Load the LLM model first (toolbar at the top)', 'error'); return; }
 
-    input.value = '';
-    input.style.height = 'auto';
-    input.disabled = true;
-    sendBtn.disabled = true;
+    input.value = ''; input.style.height = 'auto';
+    input.disabled = true; sendBt.disabled = true;
 
-    appendMessage(msgEl, 'user', text);
-
-    const typingEl = appendTyping(msgEl);
+    appendMsg(msgs, 'user', text);
+    const typingEl = appendTyping(msgs);
 
     try {
-      const author = authorSel.value || null;
-      const payload = {
-        blog_id: activeBlogId,
-        message: text,
-        author,
-        history: history.slice(-10),   // keep last 10 turns
-      };
-      const r = await fetch(`${API}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      // Embed + search
+      const [qEmb] = await embed([text]);
+      const author = document.getElementById('author-select').value || null;
+      const hits   = search(qEmb, activeBlogId, author, TOP_K);
+
       typingEl.remove();
 
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({ detail: r.statusText }));
-        appendMessage(msgEl, 'error', err.detail || 'Something went wrong.');
-      } else {
-        const d = await r.json();
-        appendMessage(msgEl, 'bot', d.response, d.sources);
-        history.push({ role: 'user', content: text });
-        history.push({ role: 'assistant', content: d.response });
+      if (!hits.length) {
+        appendMsg(msgs, 'bot', "I couldn't find relevant articles to answer your question.");
+        return;
       }
-    } catch (e) {
-      typingEl.remove();
-      appendMessage(msgEl, 'error', 'Network error: ' + e.message);
-    }
 
-    input.disabled = false;
-    sendBtn.disabled = false;
-    input.focus();
+      const context = hits.map(h => h.text).join('\n\n---\n\n');
+      const seen = new Set(); const sources = [];
+      for (const h of hits) {
+        if (!seen.has(h.articleUrl)) { seen.add(h.articleUrl); sources.push({ title: h.articleTitle, url: h.articleUrl }); }
+      }
+
+      const authorName = author || (memChunks.get(activeBlogId)?.[0]?.author) || 'the blog author';
+      const system = TWIN_PROMPT.replace('{author}', authorName).replace('{context}', context);
+      const messages = [
+        { role: 'system', content: system },
+        ...history.slice(-MAX_HISTORY),
+        { role: 'user',   content: text },
+      ];
+
+      // Stream response
+      const botEl = appendMsg(msgs, 'bot', '', sources);
+      const bubble = botEl.querySelector('.bubble');
+      let full = '';
+
+      for await (const token of streamLLM(messages)) {
+        full += token;
+        bubble.firstChild.nodeValue = full; // update text node
+        msgs.scrollTop = msgs.scrollHeight;
+      }
+
+      history.push({ role: 'user',      content: text });
+      history.push({ role: 'assistant', content: full });
+
+    } catch (err) {
+      typingEl?.remove();
+      appendMsg(msgs, 'error', String(err));
+    } finally {
+      input.disabled = false; sendBt.disabled = false; input.focus();
+    }
   }
 }
 
-// ── Message helpers ───────────────────────────────────────────────────────────
-function appendMessage(container, role, text, sources) {
-  const isUser = role === 'user';
+function appendMsg(container, role, text, sources) {
+  const isUser  = role === 'user';
   const isError = role === 'error';
-
   const wrap = document.createElement('div');
   wrap.className = `message ${isUser ? 'user' : 'bot'}`;
 
   let sourcesHTML = '';
-  if (sources && sources.length) {
-    const links = sources.map(s =>
-      `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || s.url)}</a>`
-    ).join(' · ');
-    sourcesHTML = `<div class="sources">📄 Sources: ${links}</div>`;
+  if (sources?.length) {
+    const links = sources.map(s => `<a href="${esc(s.url)}" target="_blank">${esc(s.title || s.url)}</a>`).join(' · ');
+    sourcesHTML = `<div class="sources">📄 ${links}</div>`;
   }
 
   wrap.innerHTML = `
     <div class="avatar">${isUser ? '👤' : '🧠'}</div>
     <div class="bubble" style="${isError ? 'color:var(--error);border-color:var(--error)' : ''}">
-      ${esc(text)}${sourcesHTML}
-    </div>
-  `;
+      ${sourcesHTML}
+    </div>`;
+
+  // Insert text as a text node so streaming updates work cleanly
+  const bubble = wrap.querySelector('.bubble');
+  bubble.insertBefore(document.createTextNode(text), bubble.firstChild);
+
   container.appendChild(wrap);
   container.scrollTop = container.scrollHeight;
   return wrap;
@@ -557,70 +846,90 @@ function appendMessage(container, role, text, sources) {
 function appendTyping(container) {
   const wrap = document.createElement('div');
   wrap.className = 'message bot typing';
-  wrap.innerHTML = `
-    <div class="avatar">🧠</div>
-    <div class="bubble">
-      <div class="typing-dots"><span></span><span></span><span></span></div>
-    </div>
-  `;
+  wrap.innerHTML = `<div class="avatar">🧠</div>
+    <div class="bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
   container.appendChild(wrap);
   container.scrollTop = container.scrollHeight;
   return wrap;
 }
 
-// ── Ingest ────────────────────────────────────────────────────────────────────
-ingestBtn.addEventListener('click', async () => {
-  const url = blogUrlInput.value.trim();
+// ── Ingest handler ────────────────────────────────────────────────────────────
+async function handleIngest() {
+  const url = document.getElementById('blog-url-input').value.trim();
   if (!url) { toast('Please enter a blog URL', 'error'); return; }
+  if (!embedder) { toast('Embedder still loading — please wait a moment', 'error'); return; }
 
-  ingestBtn.disabled = true;
-  ingestProg.style.display = '';
+  const btn = document.getElementById('ingest-btn');
+  btn.disabled = true;
 
   try {
-    const r = await fetch(`${API}/ingest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
-    });
-    const d = await r.json();
-    if (!r.ok) { toast(d.detail || 'Ingestion failed', 'error'); return; }
-
-    toast(`✓ ${d.article_count} articles ingested`, 'success');
-    blogUrlInput.value = '';
-    await loadBlogs();
-    selectBlog(d);
-  } catch (e) {
-    toast('Network error: ' + e.message, 'error');
+    const blog = await ingestBlog(url, (ratio, msg) => setIngestProg(ratio, msg));
+    document.getElementById('blog-url-input').value = '';
+    document.getElementById('ingest-prog').style.display = 'none';
+    await renderBlogList();
+    selectBlog(blog);
+    toast(`✓ ${blog.articleCount} articles ingested`, 'success');
+  } catch (err) {
+    document.getElementById('ingest-prog').style.display = 'none';
+    toast(String(err), 'error');
   } finally {
-    ingestBtn.disabled = false;
-    ingestProg.style.display = 'none';
+    btn.disabled = false;
   }
-});
-
-blogUrlInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') ingestBtn.click();
-});
-
-// ── Toast ─────────────────────────────────────────────────────────────────────
-let toastTimer;
-function toast(msg, type = '') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = `show ${type}`;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = ''; }, 3500);
-}
-
-// ── Utilities ─────────────────────────────────────────────────────────────────
-function esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-(async () => {
-  await Promise.all([checkHealth(), loadBlogs()]);
-  setInterval(checkHealth, 30000);
-})();
+async function boot() {
+  // WebGPU check
+  const gpuPill = document.getElementById('gpu-pill');
+  if (navigator.gpu) {
+    gpuPill.textContent = '✓ WebGPU'; gpuPill.className = 'ok';
+  } else {
+    gpuPill.textContent = '⚠ No WebGPU (Chrome/Edge 113+)'; gpuPill.className = 'warn';
+    setLLMStatus('Requires WebGPU', 'err');
+    document.getElementById('load-llm-btn').disabled = true;
+  }
+
+  // IndexedDB
+  db = await openDB();
+
+  // Load existing blogs + chunks into memory
+  const blogs = await dbAll('blogs');
+  for (const b of blogs) {
+    const chunks = await dbByIdx('chunks', 'blogId', b.id);
+    memChunks.set(b.id, chunks);
+  }
+  await renderBlogList();
+
+  // Embedder (background)
+  initEmbedder().catch(err => setEmbedStatus('Error: ' + err.message, 'err'));
+
+  // LLM load button
+  document.getElementById('load-llm-btn').addEventListener('click', async () => {
+    const modelId = document.getElementById('llm-select').value;
+    try {
+      await initLLM(modelId);
+      toast('LLM ready', 'success');
+    } catch (err) {
+      setLLMStatus('Error: ' + err.message, 'err');
+      toast('LLM load failed: ' + err.message, 'error');
+      document.getElementById('load-llm-btn').disabled = false;
+    }
+  });
+
+  // Ingest button + enter key
+  document.getElementById('ingest-btn').addEventListener('click', handleIngest);
+  document.getElementById('blog-url-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleIngest();
+  });
+
+  // Author select changes active author
+  document.getElementById('author-select').addEventListener('change', e => {
+    activeAuthor = e.target.value || null;
+    history = [];
+  });
+}
+
+boot();
 </script>
 </body>
 </html>
