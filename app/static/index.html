@@ -29,55 +29,42 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      background: var(--bg); color: var(--text);
+      height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
     }
 
-    /* ── Model bar ───────────────────────────────────────────────────────── */
+    /* ── Model bar ─────────────────────────────────────────────────────────── */
     #model-bar {
-      background: #0a0d14;
-      border-bottom: 1px solid var(--border);
-      padding: 6px 20px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      flex-shrink: 0;
-      font-size: 0.75rem;
-      flex-wrap: wrap;
+      background: #0a0d14; border-bottom: 1px solid var(--border);
+      padding: 6px 20px; display: flex; align-items: center; gap: 16px;
+      flex-shrink: 0; font-size: 0.75rem; flex-wrap: wrap;
     }
     .mb-item { display: flex; align-items: center; gap: 7px; }
     .mb-label { color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; font-size: 0.65rem; }
+    .mb-sep   { width: 1px; height: 18px; background: var(--border); }
     .mb-status { font-size: 0.72rem; }
     .mb-status.ok   { color: var(--success); }
     .mb-status.warn { color: var(--warn); }
     .mb-status.err  { color: var(--error); }
-    .mb-sep { width: 1px; height: 18px; background: var(--border); }
     .llm-select {
       padding: 3px 7px; border-radius: 6px; border: 1px solid var(--border);
       background: var(--surface2); color: var(--text); font-size: 0.72rem; outline: none;
     }
     .llm-select:focus { border-color: var(--accent); }
-    #llm-progress-wrap { display: none; align-items: center; gap: 6px; }
-    #llm-bar { width: 100px; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    #llm-prog-wrap { display: none; align-items: center; gap: 6px; }
+    #llm-bar { width: 110px; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
     #llm-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
-    #gpu-pill {
+    #llm-pct { font-size: 0.68rem; color: var(--text-muted); min-width: 28px; }
+    .wasm-badge {
       margin-left: auto; font-size: 0.65rem; padding: 2px 8px; border-radius: 99px;
-      border: 1px solid var(--border); background: var(--surface2);
+      border: 1px solid var(--success); color: var(--success); background: var(--surface2);
     }
-    #gpu-pill.ok   { border-color: var(--success); color: var(--success); }
-    #gpu-pill.warn { border-color: var(--warn);    color: var(--warn); }
 
-    /* ── Header ──────────────────────────────────────────────────────────── */
+    /* ── Header ─────────────────────────────────────────────────────────────── */
     header {
-      padding: 10px 24px;
-      background: var(--surface);
+      padding: 10px 24px; background: var(--surface);
       border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 12px;
-      flex-shrink: 0;
+      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
     }
     .logo { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.5px; }
     .logo span { color: var(--accent); }
@@ -88,7 +75,7 @@
     }
     .header-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
 
-    /* ── Layout ──────────────────────────────────────────────────────────── */
+    /* ── Layout ──────────────────────────────────────────────────────────────── */
     main { flex: 1; display: flex; overflow: hidden; }
 
     aside {
@@ -101,8 +88,6 @@
       font-size: 0.65rem; text-transform: uppercase;
       letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;
     }
-
-    /* Inputs */
     .field-url {
       width: 100%; padding: 8px 10px; border-radius: var(--radius-sm);
       border: 1px solid var(--border); background: var(--bg);
@@ -111,7 +96,6 @@
     }
     .field-url:focus { border-color: var(--accent); }
     .field-url::placeholder { color: var(--text-muted); }
-
     .author-select {
       width: 100%; padding: 7px 10px; border-radius: var(--radius-sm);
       border: 1px solid var(--border); background: var(--bg);
@@ -119,7 +103,6 @@
     }
     .author-select:focus { border-color: var(--accent); }
 
-    /* Buttons */
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 5px;
       padding: 7px 14px; border-radius: var(--radius-sm); border: none;
@@ -134,13 +117,11 @@
     .btn-sm      { padding: 3px 10px; font-size: 0.72rem; }
     .btn-danger  { background: #7f1d1d; color: #fca5a5; padding: 4px 8px; font-size: 0.72rem; }
 
-    /* Ingest progress */
     #ingest-prog { display: none; margin-top: 8px; }
     .prog-bar { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
-    .prog-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s; }
+    .prog-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s; }
     #ingest-msg { font-size: 0.68rem; color: var(--text-muted); margin-top: 4px; text-align: center; }
 
-    /* Blog list */
     .blog-list { flex: 1; overflow-y: auto; }
     .blog-item {
       padding: 10px 16px; border-bottom: 1px solid var(--border);
@@ -154,9 +135,8 @@
     .blog-sub   { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
     .blog-auth  { font-size: 0.66rem; color: var(--accent); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* ── Chat area ───────────────────────────────────────────────────────── */
+    /* ── Chat ────────────────────────────────────────────────────────────────── */
     .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
     .empty-state {
       flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
@@ -213,7 +193,6 @@
     #message-input:disabled { opacity: 0.5; }
     #send-btn { padding: 10px 14px; font-size: 1rem; align-self: flex-end; flex-shrink: 0; width: auto; }
 
-    /* Toast */
     #toast {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
       padding: 10px 20px; border-radius: var(--radius); font-size: 0.8rem; font-weight: 600;
@@ -221,8 +200,8 @@
       opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999;
     }
     #toast.show { opacity: 1; }
-    #toast.error   { border-color: var(--error);   color: var(--error); }
-    #toast.success { border-color: var(--success);  color: var(--success); }
+    #toast.error   { border-color: var(--error);  color: var(--error); }
+    #toast.success { border-color: var(--success); color: var(--success); }
 
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -231,7 +210,7 @@
 </head>
 <body>
 
-<!-- ── Model bar ─────────────────────────────────────────────────────────── -->
+<!-- ── Model bar ──────────────────────────────────────────────────────────── -->
 <div id="model-bar">
   <div class="mb-item">
     <span class="mb-label">Embedder</span>
@@ -239,29 +218,27 @@
   </div>
   <div class="mb-sep"></div>
   <div class="mb-item">
-    <span class="mb-label">LLM</span>
+    <span class="mb-label">LFM2</span>
     <select class="llm-select" id="llm-select">
-      <option value="Llama-3.2-1B-Instruct-q4f32_1-MLC">Llama 3.2 · 1B (~800 MB)</option>
-      <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2 · 1.7B (~1 GB)</option>
-      <option value="gemma-2-2b-it-q4f16_1-MLC">Gemma 2 · 2B (~1.5 GB)</option>
-      <option value="Llama-3.2-3B-Instruct-q4f32_1-MLC">Llama 3.2 · 3B (~2 GB)</option>
-      <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi 3.5 Mini (~2.2 GB)</option>
+      <option value="LFM2-350M-Q4_K_M.gguf">LFM2-350M · Q4_K_M (229 MB)</option>
+      <option value="LFM2-350M-Q5_K_M.gguf">LFM2-350M · Q5_K_M (260 MB)</option>
+      <option value="LFM2-350M-Q8_0.gguf">LFM2-350M · Q8_0   (379 MB)</option>
     </select>
     <button class="btn btn-sm btn-primary" id="load-llm-btn">Load</button>
-    <div id="llm-progress-wrap">
+    <div id="llm-prog-wrap">
       <div id="llm-bar"><div id="llm-bar-fill"></div></div>
-      <span id="llm-pct" style="font-size:0.68rem;color:var(--text-muted)">0%</span>
+      <span id="llm-pct">0%</span>
     </div>
     <span class="mb-status" id="llm-status">not loaded</span>
   </div>
-  <span id="gpu-pill">WebGPU …</span>
+  <span class="wasm-badge">⚙ WebAssembly · all browsers</span>
 </div>
 
 <!-- ── Header ────────────────────────────────────────────────────────────── -->
 <header>
   <div>
     <div class="logo">Chat<span>MyIdeas</span> <span class="badge">Browser Local</span></div>
-    <div class="header-sub">Embeddings &amp; LLM run entirely in your browser via WebGPU — no server AI needed</div>
+    <div class="header-sub">LFM2-350M runs in your browser via WASM (llama.cpp) — no server AI, no GPU required</div>
   </div>
 </header>
 
@@ -274,7 +251,7 @@
              placeholder="https://example.com/blog" autocomplete="off" />
       <button class="btn btn-primary btn-full" id="ingest-btn">⚡ Create Twin</button>
       <div id="ingest-prog">
-        <div class="prog-bar"><div class="prog-bar-fill" id="ingest-bar"></div></div>
+        <div class="prog-bar"><div class="prog-fill" id="ingest-bar"></div></div>
         <div id="ingest-msg">Fetching…</div>
       </div>
     </div>
@@ -292,9 +269,10 @@
   <div class="chat-area" id="chat-area">
     <div class="empty-state" id="empty-state">
       <div class="empty-icon">🧠</div>
-      <h2>Chat with a blog's ideas — locally</h2>
-      <p>Paste a blog URL, click <strong>Create Twin</strong>, then start chatting.<br>
-         The LLM and embeddings run in your browser — nothing leaves your machine.</p>
+      <h2>Chat with a blog's ideas — fully local</h2>
+      <p>1. Click <strong>Load</strong> in the toolbar to download LFM2-350M (~229 MB, cached).<br>
+         2. Paste a blog URL and click <strong>Create Twin</strong>.<br>
+         3. Chat — everything runs in your browser.</p>
     </div>
   </div>
 </main>
@@ -304,27 +282,38 @@
 <!-- ── Application ───────────────────────────────────────────────────────── -->
 <script type="module">
 
-import * as webllm from 'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm';
+// ── Imports ────────────────────────────────────────────────────────────────
+// Transformers.js — local embeddings via ONNX
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js';
 
-// ── Config ──────────────────────────────────────────────────────────────────
+// wllama — llama.cpp compiled to WebAssembly, loads GGUF from HuggingFace
+import { Wllama } from 'https://esm.run/@wllama/wllama';
+
+// ── Constants ──────────────────────────────────────────────────────────────
+const EMBED_MODEL   = 'Xenova/all-MiniLM-L6-v2';
+const LFM2_REPO     = 'LiquidAI/LFM2-350M-GGUF';
 const CHUNK_WORDS   = 200;
 const CHUNK_OVERLAP = 30;
 const TOP_K         = 5;
 const MAX_HISTORY   = 10;
-const EMBED_MODEL   = 'Xenova/all-MiniLM-L6-v2';
 const MAX_ARTICLES  = 60;
 
-// ── Global state ─────────────────────────────────────────────────────────────
+// wllama WASM files served from jsdelivr CDN
+const WLLAMA_CDN = 'https://cdn.jsdelivr.net/npm/@wllama/wllama/esm/';
+const WASM_PATHS = {
+  'single-thread/wllama.wasm': WLLAMA_CDN + 'single-thread/wllama.wasm',
+  'multi-thread/wllama.wasm':  WLLAMA_CDN + 'multi-thread/wllama.wasm',
+};
+
+// ── Global state ───────────────────────────────────────────────────────────
 let embedder    = null;   // Transformers.js pipeline
-let llmEngine   = null;   // WebLLM engine
+let wllama      = null;   // wllama instance (llama.cpp WASM)
 let db          = null;   // IndexedDB
 let activeBlogId = null;
-let activeAuthor = null;
 let history     = [];
-const memChunks = new Map(); // blogId -> chunk[]
+const memChunks = new Map(); // blogId → chunk[]
 
-// ── IndexedDB ─────────────────────────────────────────────────────────────────
+// ── IndexedDB ──────────────────────────────────────────────────────────────
 function openDB() {
   return new Promise((res, rej) => {
     const req = indexedDB.open('chatmyideas_v1', 1);
@@ -342,119 +331,132 @@ function openDB() {
   });
 }
 
-function tx(store, mode, fn) {
-  return new Promise((res, rej) => {
-    const t = db.transaction(store, mode);
-    const s = t.objectStore(store);
-    const req = fn(s);
-    req.onsuccess = () => res(req.result);
-    req.onerror   = () => rej(req.error);
-  });
-}
-
-const dbPut    = (store, obj)       => tx(store, 'readwrite', s => s.put(obj));
-const dbDel    = (store, key)       => tx(store, 'readwrite', s => s.delete(key));
-const dbAll    = store              => tx(store, 'readonly',  s => s.getAll());
-const dbByIdx  = (store, idx, val)  => new Promise((res, rej) => {
-  const t = db.transaction(store, 'readonly');
-  const req = t.objectStore(store).index(idx).getAll(val);
-  req.onsuccess = () => res(req.result);
-  req.onerror   = () => rej(req.error);
+const dbPut   = (store, obj) => new Promise((res, rej) => {
+  const req = db.transaction(store, 'readwrite').objectStore(store).put(obj);
+  req.onsuccess = () => res(); req.onerror = () => rej(req.error);
 });
-const dbDelIdx = (store, idx, val)  => new Promise((res, rej) => {
+const dbAll   = store => new Promise((res, rej) => {
+  const req = db.transaction(store, 'readonly').objectStore(store).getAll();
+  req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
+});
+const dbDel   = (store, key) => new Promise((res, rej) => {
+  const req = db.transaction(store, 'readwrite').objectStore(store).delete(key);
+  req.onsuccess = () => res(); req.onerror = () => rej(req.error);
+});
+const dbByIdx = (store, idx, val) => new Promise((res, rej) => {
+  const req = db.transaction(store, 'readonly').objectStore(store).index(idx).getAll(val);
+  req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
+});
+const dbDelIdx = (store, idx, val) => new Promise((res, rej) => {
   const t = db.transaction(store, 'readonly');
   const kr = t.objectStore(store).index(idx).getAllKeys(val);
   kr.onsuccess = () => {
-    const t2 = db.transaction(store, 'readwrite');
-    const s2 = t2.objectStore(store);
+    const t2 = db.transaction(store, 'readwrite'); const s2 = t2.objectStore(store);
     kr.result.forEach(k => s2.delete(k));
-    t2.oncomplete = res;
-    t2.onerror    = () => rej(t2.error);
+    t2.oncomplete = res; t2.onerror = () => rej(t2.error);
   };
   kr.onerror = () => rej(kr.error);
 });
 
-// ── Embedder (Transformers.js) ────────────────────────────────────────────────
+// ── Embedder (Transformers.js / ONNX) ──────────────────────────────────────
 async function initEmbedder() {
   env.allowLocalModels = false;
   env.useBrowserCache  = true;
-  setEmbedStatus('Downloading…', '');
+  setStatus('embed', 'Downloading…');
   embedder = await pipeline('feature-extraction', EMBED_MODEL, {
     progress_callback: ({ status, progress, file }) => {
       if (status === 'progress')
-        setEmbedStatus(`${file ? file.split('/').pop() : ''} ${Math.round(progress)}%`, '');
+        setStatus('embed', `${(file || '').split('/').pop()} ${Math.round(progress)}%`);
     },
   });
-  setEmbedStatus('Ready', 'ok');
+  setStatus('embed', 'Ready', 'ok');
 }
 
 async function embed(texts) {
-  if (!embedder) throw new Error('Embedder not ready yet — please wait.');
-  const out  = await embedder(texts, { pooling: 'mean', normalize: true });
-  const dim  = out.dims[1];
+  if (!embedder) throw new Error('Embedder still loading — please wait.');
+  const out = await embedder(texts, { pooling: 'mean', normalize: true });
+  const dim = out.dims[1];
   return texts.map((_, i) => Array.from(out.data.slice(i * dim, (i + 1) * dim)));
 }
 
-// ── LLM (WebLLM / WebGPU) ────────────────────────────────────────────────────
-async function initLLM(modelId) {
-  setLLMStatus('Loading…', '');
-  document.getElementById('llm-progress-wrap').style.display = 'flex';
+// ── LFM2 via wllama (llama.cpp WASM) ───────────────────────────────────────
+async function initLFM2(filename) {
+  setStatus('llm', 'Initialising WASM…');
+  document.getElementById('llm-prog-wrap').style.display = 'flex';
   document.getElementById('load-llm-btn').disabled = true;
 
-  llmEngine = await webllm.CreateMLCEngine(modelId, {
-    initProgressCallback: ({ progress, text }) => {
-      const pct = Math.round((progress || 0) * 100);
+  wllama = new Wllama(WASM_PATHS);
+
+  await wllama.loadModelFromHF(LFM2_REPO, filename, {
+    progressCallback: ({ loaded, total }) => {
+      const pct = total ? Math.round((loaded / total) * 100) : 0;
       document.getElementById('llm-bar-fill').style.width = pct + '%';
       document.getElementById('llm-pct').textContent = pct + '%';
+      setStatus('llm', `Downloading… ${pct}%`);
     },
   });
 
-  document.getElementById('llm-progress-wrap').style.display = 'none';
+  document.getElementById('llm-prog-wrap').style.display = 'none';
   document.getElementById('load-llm-btn').disabled = false;
-  setLLMStatus('Ready ✓', 'ok');
+  setStatus('llm', 'LFM2-350M ready', 'ok');
 }
 
-async function* streamLLM(messages) {
-  if (!llmEngine) throw new Error('LLM not loaded — click "Load" in the toolbar.');
-  const stream = await llmEngine.chat.completions.create({
-    messages,
-    stream: true,
-    max_tokens: 1024,
-    temperature: 0.7,
-  });
-  for await (const chunk of stream) {
-    const delta = chunk.choices[0]?.delta?.content;
-    if (delta) yield delta;
+// LFM2 uses the ChatML template: <|im_start|>role\ncontent<|im_end|>
+function formatChatML(messages) {
+  return messages.map(m => `<|im_start|>${m.role}\n${m.content}<|im_end|>`).join('\n')
+    + '\n<|im_start|>assistant\n';
+}
+
+// Bridge wllama callback → async generator for streaming
+async function* streamLFM2(messages) {
+  if (!wllama) throw new Error('LFM2 not loaded — click Load in the toolbar.');
+
+  const prompt = formatChatML(messages);
+  const queue  = [];
+  let finished = false;
+  let notify   = null;
+
+  const push = piece => { queue.push(piece); notify?.(); notify = null; };
+  const wait = ()    => new Promise(r => { notify = r; });
+
+  wllama.createCompletion(prompt, {
+    nPredict:    1024,
+    stopStrings: ['<|im_end|>', '<|im_start|>'],
+    sampling:    { temp: 0.0 },          // LFM2 RAG models: greedy decoding
+    onNewToken:  (_id, piece) => push(new TextDecoder().decode(piece)),
+  }).then(() => { finished = true; notify?.(); })
+    .catch(err => { finished = true; notify?.(); console.error(err); });
+
+  while (true) {
+    if (queue.length) { yield queue.shift(); }
+    else if (finished) { break; }
+    else { await wait(); }
   }
 }
 
-// ── URL proxy ─────────────────────────────────────────────────────────────────
+// ── URL proxy ─────────────────────────────────────────────────────────────
 async function fetchURL(url) {
   const r = await fetch('/api/proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
   });
-  if (!r.ok) throw new Error(`Proxy error ${r.status}: ${r.statusText}`);
-  return r.json(); // { url, status, content_type, text }
+  if (!r.ok) throw new Error(`Proxy error ${r.status}`);
+  return r.json();
 }
 
-// ── Text utilities ────────────────────────────────────────────────────────────
+// ── Text utilities ────────────────────────────────────────────────────────
 function hashStr(str) {
   str = str.trim().replace(/\/$/, '');
   let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
 function chunkText(text, size = CHUNK_WORDS, overlap = CHUNK_OVERLAP) {
   const words = text.trim().split(/\s+/).filter(Boolean);
   if (!words.length) return [];
-  const out = [];
-  let start = 0;
+  const out = []; let start = 0;
   while (start < words.length) {
     const end = Math.min(start + size, words.length);
     out.push(words.slice(start, end).join(' '));
@@ -464,21 +466,20 @@ function chunkText(text, size = CHUNK_WORDS, overlap = CHUNK_OVERLAP) {
   return out;
 }
 
-// ── Blog / RSS parsing ────────────────────────────────────────────────────────
-function parseRSS(xmlText) {
-  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+// ── Blog / RSS parsing ────────────────────────────────────────────────────
+function parseRSS(xml) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
   if (doc.querySelector('parsererror')) return null;
   const items = [...doc.querySelectorAll('item, entry')];
   if (!items.length) return null;
-
   return items.slice(0, MAX_ARTICLES).map(item => {
-    const t = k => item.querySelector(k)?.textContent?.trim() || '';
-    const title  = t('title') || 'Untitled';
-    const link   = t('link') || item.querySelector('link')?.getAttribute('href') || '';
-    const raw    = t('content\\:encoded') || t('content') || t('summary') || t('description');
+    const q = k => item.querySelector(k)?.textContent?.trim() || '';
+    const title   = q('title') || 'Untitled';
+    const link    = q('link') || item.querySelector('link')?.getAttribute('href') || '';
+    const raw     = q('content\\:encoded') || q('content') || q('summary') || q('description');
     const content = new DOMParser().parseFromString(raw, 'text/html').body.textContent?.trim() || '';
-    const author  = t('author name') || t('dc\\:creator') || t('author') || null;
-    const pub     = t('pubDate') || t('published') || t('updated') || null;
+    const author  = q('author name') || q('dc\\:creator') || q('author') || null;
+    const pub     = q('pubDate') || q('published') || q('updated') || null;
     return { title, url: link, content, author: author || null, published: pub };
   }).filter(a => a.url && a.content.length > 80);
 }
@@ -487,31 +488,24 @@ function parseHTML(html, baseUrl) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const base = doc.createElement('base'); base.href = baseUrl; doc.head.prepend(base);
 
-  // Feed link?
   const feedEl = doc.querySelector(
     'link[rel="alternate"][type*="rss"], link[rel="alternate"][type*="atom"]'
   );
   const feedUrl = feedEl ? new URL(feedEl.getAttribute('href'), baseUrl).href : null;
 
-  // Article-like links
   const ARTICLE_RE = /\/(post|blog|article|entry|p|story|news|writing|essay|note)\//i;
-  const seen = new Set([baseUrl]);
-  const articleLinks = [];
+  const seen = new Set([baseUrl]); const articleLinks = [];
   for (const a of doc.querySelectorAll('a[href]')) {
     try {
       const href = new URL(a.getAttribute('href'), baseUrl).href.split('#')[0].split('?')[0];
-      if (!seen.has(href) && new URL(href).hostname === new URL(baseUrl).hostname) {
-        if (ARTICLE_RE.test(new URL(href).pathname)) { seen.add(href); articleLinks.push(href); }
-      }
+      if (!seen.has(href) && new URL(href).hostname === new URL(baseUrl).hostname
+          && ARTICLE_RE.test(new URL(href).pathname)) { seen.add(href); articleLinks.push(href); }
     } catch {}
   }
 
-  // Readability on the page itself (single article?)
   let single = null;
   try {
-    const clone  = doc.cloneNode(true);
-    const reader = new Readability(clone);
-    const art    = reader.parse();
+    const art = new Readability(doc.cloneNode(true)).parse();
     if (art?.textContent?.trim().length > 200)
       single = { title: art.title, content: art.textContent.trim(), author: art.byline || null };
   } catch {}
@@ -530,7 +524,7 @@ function readArticle(html, url) {
   return null;
 }
 
-// ── Ingestion pipeline ────────────────────────────────────────────────────────
+// ── Ingestion ─────────────────────────────────────────────────────────────
 async function ingestBlog(url, onProg) {
   const id = hashStr(url);
   onProg(0.02, 'Fetching URL…');
@@ -538,10 +532,8 @@ async function ingestBlog(url, onProg) {
   const { content_type, text, url: finalUrl } = await fetchURL(url);
   let rawArticles = [];
 
-  // 1. Direct feed?
   if (/xml|rss|atom/.test(content_type)) rawArticles = parseRSS(text) || [];
 
-  // 2. HTML — find feed / article links
   if (!rawArticles.length) {
     const { feedUrl, articleLinks, single } = parseHTML(text, finalUrl || url);
 
@@ -549,21 +541,17 @@ async function ingestBlog(url, onProg) {
       onProg(0.05, 'Found feed, fetching…');
       try { rawArticles = parseRSS((await fetchURL(feedUrl)).text) || []; } catch {}
     }
-
     if (!rawArticles.length && articleLinks.length) {
       const links = articleLinks.slice(0, MAX_ARTICLES);
-      onProg(0.08, `Found ${links.length} article links…`);
       for (let i = 0; i < links.length; i++) {
         onProg(0.08 + (i / links.length) * 0.32, `Fetching article ${i + 1}/${links.length}…`);
         try {
-          const d   = await fetchURL(links[i]);
+          const d = await fetchURL(links[i]);
           const art = readArticle(d.text, links[i]);
           if (art) rawArticles.push({ url: links[i], ...art });
         } catch {}
       }
     }
-
-    // 3. Single article fallback
     if (!rawArticles.length && single) rawArticles.push({ url: finalUrl || url, ...single });
   }
 
@@ -571,52 +559,39 @@ async function ingestBlog(url, onProg) {
 
   onProg(0.42, `Processing ${rawArticles.length} articles…`);
 
-  // Build chunks
   const chunks = [];
-  for (const art of rawArticles) {
-    for (const txt of chunkText(art.content)) {
+  for (const art of rawArticles)
+    for (const txt of chunkText(art.content))
       chunks.push({
-        id: `${id}_${chunks.length}`,
-        blogId: id,
-        articleUrl:   art.url,
-        articleTitle: art.title || art.url,
-        author:       art.author || null,
-        text:         txt,
-        embedding:    null,
+        id: `${id}_${chunks.length}`, blogId: id,
+        articleUrl: art.url, articleTitle: art.title || art.url,
+        author: art.author || null, text: txt, embedding: null,
       });
-    }
-  }
 
-  // Embed in batches
   const BATCH = 8;
   for (let i = 0; i < chunks.length; i += BATCH) {
     const batch = chunks.slice(i, i + BATCH);
-    onProg(0.42 + (i / chunks.length) * 0.5, `Embedding ${i + 1}–${Math.min(i + BATCH, chunks.length)} / ${chunks.length}…`);
+    onProg(0.42 + (i / chunks.length) * 0.5,
+      `Embedding ${i + 1}–${Math.min(i + BATCH, chunks.length)} / ${chunks.length}…`);
     const embs = await embed(batch.map(c => c.text));
     embs.forEach((e, j) => { batch[j].embedding = e; });
   }
 
-  // Persist
   onProg(0.93, 'Saving to browser storage…');
   const authors = [...new Set(rawArticles.map(a => a.author).filter(Boolean))];
   const blog = {
-    id,
-    url,
-    title: rawArticles[0]?.title || url,
-    authors,
-    articleCount: rawArticles.length,
+    id, url, title: rawArticles[0]?.title || url,
+    authors, articleCount: rawArticles.length,
     createdAt: new Date().toISOString(),
   };
-
   await dbPut('blogs', blog);
   for (const c of chunks) await dbPut('chunks', c);
-
   memChunks.set(id, chunks);
   onProg(1, 'Done!');
   return blog;
 }
 
-// ── Vector search ─────────────────────────────────────────────────────────────
+// ── Vector search ─────────────────────────────────────────────────────────
 function cosine(a, b) {
   let dot = 0, na = 0, nb = 0;
   for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
@@ -627,11 +602,10 @@ function search(qEmb, blogId, author, k) {
   return (memChunks.get(blogId) || [])
     .filter(c => !author || c.author === author)
     .map(c => ({ ...c, score: cosine(qEmb, c.embedding) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, k);
+    .sort((a, b) => b.score - a.score).slice(0, k);
 }
 
-// ── Chat ──────────────────────────────────────────────────────────────────────
+// ── Digital-twin system prompt ────────────────────────────────────────────
 const TWIN_PROMPT = `You are a digital twin of {author}.
 You embody the knowledge, writing style, perspectives, and ideas expressed in their published articles.
 
@@ -646,36 +620,30 @@ When answering:
 {context}
 --- End of excerpts ---`;
 
-// ── UI helpers ────────────────────────────────────────────────────────────────
+// ── UI helpers ────────────────────────────────────────────────────────────
 function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
-let _toast; function toast(msg, type = '') {
+let _toast;
+function toast(msg, type = '') {
   const el = document.getElementById('toast');
   el.textContent = msg; el.className = `show ${type}`;
   clearTimeout(_toast); _toast = setTimeout(() => el.className = '', 3500);
 }
-
-function setEmbedStatus(txt, cls) {
-  const el = document.getElementById('embed-status');
+function setStatus(id, txt, cls = '') {
+  const el = document.getElementById(id === 'embed' ? 'embed-status' : 'llm-status');
   el.textContent = txt; el.className = `mb-status ${cls}`;
 }
-function setLLMStatus(txt, cls) {
-  const el = document.getElementById('llm-status');
-  el.textContent = txt; el.className = `mb-status ${cls}`;
-}
-
 function setIngestProg(ratio, msg) {
   document.getElementById('ingest-prog').style.display = '';
   document.getElementById('ingest-bar').style.width = (ratio * 100) + '%';
   document.getElementById('ingest-msg').textContent = msg;
 }
 
+// ── Blog list ─────────────────────────────────────────────────────────────
 async function renderBlogList() {
   const blogs = await dbAll('blogs');
-  const el = document.getElementById('blog-list');
-  el.innerHTML = '';
+  const el = document.getElementById('blog-list'); el.innerHTML = '';
   blogs.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).forEach(b => {
     const div = document.createElement('div');
     div.className = 'blog-item' + (b.id === activeBlogId ? ' active' : '');
@@ -695,42 +663,36 @@ async function renderBlogList() {
       await dbDelIdx('chunks', 'blogId', b.id);
       memChunks.delete(b.id);
       if (activeBlogId === b.id) resetChat();
-      div.remove();
-      toast('Blog deleted', 'success');
+      div.remove(); toast('Blog deleted', 'success');
     });
     el.appendChild(div);
   });
 }
 
 function selectBlog(b) {
-  activeBlogId = b.id;
-  history = [];
+  activeBlogId = b.id; history = [];
   document.querySelectorAll('.blog-item').forEach(el =>
-    el.classList.toggle('active', el.dataset.id === b.id)
-  );
-  const authorSec = document.getElementById('author-section');
-  const authorSel = document.getElementById('author-select');
-  authorSel.innerHTML = '<option value="">All authors</option>';
+    el.classList.toggle('active', el.dataset.id === b.id));
+  const sec = document.getElementById('author-section');
+  const sel = document.getElementById('author-select');
+  sel.innerHTML = '<option value="">All authors</option>';
   (b.authors || []).forEach(a => {
-    const o = document.createElement('option'); o.value = a; o.textContent = a;
-    authorSel.appendChild(o);
+    const o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o);
   });
-  authorSec.style.display = b.authors.length > 1 ? '' : 'none';
+  sec.style.display = b.authors.length > 1 ? '' : 'none';
   buildChatUI(b);
 }
 
 function resetChat() {
   activeBlogId = null; history = [];
+  document.getElementById('author-section').style.display = 'none';
   const area = document.getElementById('chat-area');
   area.innerHTML = '';
-  const es = document.getElementById('empty-state') || (() => {
-    const d = document.createElement('div');
-    d.id = 'empty-state'; d.className = 'empty-state';
-    d.innerHTML = `<div class="empty-icon">🧠</div>
-      <h2>Chat with a blog's ideas — locally</h2>
-      <p>Paste a blog URL, click <strong>Create Twin</strong>, then start chatting.</p>`;
-    return d;
-  })();
+  const es = document.createElement('div');
+  es.className = 'empty-state';
+  es.innerHTML = `<div class="empty-icon">🧠</div>
+    <h2>Chat with a blog's ideas — fully local</h2>
+    <p>Paste a blog URL and click <strong>Create Twin</strong>.</p>`;
   area.appendChild(es);
 }
 
@@ -744,74 +706,69 @@ function buildChatUI(b) {
       <button class="btn btn-primary" id="send-btn">➤</button>
     </div>`;
 
-  const msgs   = document.getElementById('messages');
-  const input  = document.getElementById('message-input');
-  const sendBt = document.getElementById('send-btn');
+  const msgs  = document.getElementById('messages');
+  const input = document.getElementById('message-input');
+  const btn   = document.getElementById('send-btn');
 
   input.addEventListener('input', () => {
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 120) + 'px';
   });
   input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
-  sendBt.addEventListener('click', send);
+  btn.addEventListener('click', send);
 
   async function send() {
     const text = input.value.trim();
     if (!text || !activeBlogId) return;
-    if (!llmEngine) { toast('Load the LLM model first (toolbar at the top)', 'error'); return; }
+    if (!wllama) { toast('Load LFM2 first — click "Load" in the toolbar', 'error'); return; }
 
     input.value = ''; input.style.height = 'auto';
-    input.disabled = true; sendBt.disabled = true;
+    input.disabled = true; btn.disabled = true;
 
     appendMsg(msgs, 'user', text);
     const typingEl = appendTyping(msgs);
 
     try {
-      // Embed + search
       const [qEmb] = await embed([text]);
       const author = document.getElementById('author-select').value || null;
       const hits   = search(qEmb, activeBlogId, author, TOP_K);
 
       typingEl.remove();
 
-      if (!hits.length) {
-        appendMsg(msgs, 'bot', "I couldn't find relevant articles to answer your question.");
-        return;
-      }
+      if (!hits.length) { appendMsg(msgs, 'bot', "I couldn't find relevant articles to answer your question."); return; }
 
-      const context = hits.map(h => h.text).join('\n\n---\n\n');
-      const seen = new Set(); const sources = [];
-      for (const h of hits) {
+      const context    = hits.map(h => h.text).join('\n\n---\n\n');
+      const seen       = new Set(); const sources = [];
+      for (const h of hits)
         if (!seen.has(h.articleUrl)) { seen.add(h.articleUrl); sources.push({ title: h.articleTitle, url: h.articleUrl }); }
-      }
 
-      const authorName = author || (memChunks.get(activeBlogId)?.[0]?.author) || 'the blog author';
-      const system = TWIN_PROMPT.replace('{author}', authorName).replace('{context}', context);
+      const authorName = author || memChunks.get(activeBlogId)?.[0]?.author || 'the blog author';
+      const sysPrompt  = TWIN_PROMPT.replace('{author}', authorName).replace('{context}', context);
+
       const messages = [
-        { role: 'system', content: system },
+        { role: 'system',    content: sysPrompt },
         ...history.slice(-MAX_HISTORY),
-        { role: 'user',   content: text },
+        { role: 'user',      content: text },
       ];
 
-      // Stream response
-      const botEl = appendMsg(msgs, 'bot', '', sources);
+      const botEl  = appendMsg(msgs, 'bot', '', sources);
       const bubble = botEl.querySelector('.bubble');
+      const textNode = bubble.firstChild;
       let full = '';
 
-      for await (const token of streamLLM(messages)) {
+      for await (const token of streamLFM2(messages)) {
         full += token;
-        bubble.firstChild.nodeValue = full; // update text node
+        textNode.nodeValue = full;
         msgs.scrollTop = msgs.scrollHeight;
       }
 
       history.push({ role: 'user',      content: text });
       history.push({ role: 'assistant', content: full });
-
     } catch (err) {
       typingEl?.remove();
       appendMsg(msgs, 'error', String(err));
     } finally {
-      input.disabled = false; sendBt.disabled = false; input.focus();
+      input.disabled = false; btn.disabled = false; input.focus();
     }
   }
 }
@@ -830,40 +787,32 @@ function appendMsg(container, role, text, sources) {
 
   wrap.innerHTML = `
     <div class="avatar">${isUser ? '👤' : '🧠'}</div>
-    <div class="bubble" style="${isError ? 'color:var(--error);border-color:var(--error)' : ''}">
-      ${sourcesHTML}
-    </div>`;
+    <div class="bubble" style="${isError ? 'color:var(--error);border-color:var(--error)' : ''}">${sourcesHTML}</div>`;
 
-  // Insert text as a text node so streaming updates work cleanly
-  const bubble = wrap.querySelector('.bubble');
-  bubble.insertBefore(document.createTextNode(text), bubble.firstChild);
-
+  wrap.querySelector('.bubble').insertBefore(document.createTextNode(text), wrap.querySelector('.bubble').firstChild);
   container.appendChild(wrap);
   container.scrollTop = container.scrollHeight;
   return wrap;
 }
 
 function appendTyping(container) {
-  const wrap = document.createElement('div');
-  wrap.className = 'message bot typing';
-  wrap.innerHTML = `<div class="avatar">🧠</div>
+  const w = document.createElement('div');
+  w.className = 'message bot typing';
+  w.innerHTML = `<div class="avatar">🧠</div>
     <div class="bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
-  container.appendChild(wrap);
-  container.scrollTop = container.scrollHeight;
-  return wrap;
+  container.appendChild(w); container.scrollTop = container.scrollHeight;
+  return w;
 }
 
-// ── Ingest handler ────────────────────────────────────────────────────────────
+// ── Ingest handler ────────────────────────────────────────────────────────
 async function handleIngest() {
   const url = document.getElementById('blog-url-input').value.trim();
   if (!url) { toast('Please enter a blog URL', 'error'); return; }
-  if (!embedder) { toast('Embedder still loading — please wait a moment', 'error'); return; }
-
+  if (!embedder) { toast('Embedder still loading — please wait', 'error'); return; }
   const btn = document.getElementById('ingest-btn');
   btn.disabled = true;
-
   try {
-    const blog = await ingestBlog(url, (ratio, msg) => setIngestProg(ratio, msg));
+    const blog = await ingestBlog(url, (r, m) => setIngestProg(r, m));
     document.getElementById('blog-url-input').value = '';
     document.getElementById('ingest-prog').style.display = 'none';
     await renderBlogList();
@@ -872,24 +821,11 @@ async function handleIngest() {
   } catch (err) {
     document.getElementById('ingest-prog').style.display = 'none';
     toast(String(err), 'error');
-  } finally {
-    btn.disabled = false;
-  }
+  } finally { btn.disabled = false; }
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
+// ── Boot ──────────────────────────────────────────────────────────────────
 async function boot() {
-  // WebGPU check
-  const gpuPill = document.getElementById('gpu-pill');
-  if (navigator.gpu) {
-    gpuPill.textContent = '✓ WebGPU'; gpuPill.className = 'ok';
-  } else {
-    gpuPill.textContent = '⚠ No WebGPU (Chrome/Edge 113+)'; gpuPill.className = 'warn';
-    setLLMStatus('Requires WebGPU', 'err');
-    document.getElementById('load-llm-btn').disabled = true;
-  }
-
-  // IndexedDB
   db = await openDB();
 
   // Load existing blogs + chunks into memory
@@ -900,31 +836,27 @@ async function boot() {
   }
   await renderBlogList();
 
-  // Embedder (background)
-  initEmbedder().catch(err => setEmbedStatus('Error: ' + err.message, 'err'));
+  // Embedder (background — downloads ~23 MB once, then cached)
+  initEmbedder().catch(err => setStatus('embed', 'Error: ' + err.message, 'err'));
 
-  // LLM load button
+  // LFM2 load button
   document.getElementById('load-llm-btn').addEventListener('click', async () => {
-    const modelId = document.getElementById('llm-select').value;
+    const file = document.getElementById('llm-select').value;
     try {
-      await initLLM(modelId);
-      toast('LLM ready', 'success');
+      await initLFM2(file);
+      toast('LFM2 ready', 'success');
     } catch (err) {
-      setLLMStatus('Error: ' + err.message, 'err');
-      toast('LLM load failed: ' + err.message, 'error');
+      setStatus('llm', 'Error: ' + err.message, 'err');
+      toast('LFM2 load failed: ' + err.message, 'error');
       document.getElementById('load-llm-btn').disabled = false;
     }
   });
 
-  // Ingest button + enter key
   document.getElementById('ingest-btn').addEventListener('click', handleIngest);
   document.getElementById('blog-url-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') handleIngest();
   });
-
-  // Author select changes active author
   document.getElementById('author-select').addEventListener('change', e => {
-    activeAuthor = e.target.value || null;
     history = [];
   });
 }

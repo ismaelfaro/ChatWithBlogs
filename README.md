@@ -4,7 +4,7 @@
 > All AI runs inside the browser — no Ollama, no Python vector store, no GPU server needed.
 
 Turn any blog into a conversational digital twin of its author.
-Embeddings and LLM inference happen entirely in your browser via **WebGPU** and **WebAssembly**. The Python server only proxies external URLs to bypass CORS.
+Embeddings and LLM inference happen entirely in your browser via **WebAssembly**. The Python server only proxies external URLs to bypass CORS.
 
 ---
 
@@ -26,7 +26,7 @@ Blog URL
    ├─ Embed query  ──► cosine similarity  ──► top-K chunks
    └─ Build prompt ("You are a digital twin of …")
               │
-              ▼  (browser — WebLLM · WebGPU)
+              ▼  (browser — wllama · WebAssembly · LFM2-350M-GGUF)
            LLM response (streamed token by token)
 ```
 
@@ -39,7 +39,7 @@ Blog URL
 | Requirement | Notes |
 |---|---|
 | Python 3.11+ | Server (proxy only) |
-| Chrome / Edge 113+ | WebGPU support required for the LLM |
+| Any modern browser | Chrome, Firefox, Safari, Edge — no WebGPU needed |
 | Internet (first run) | Models are downloaded and cached by the browser |
 
 ---
@@ -53,7 +53,7 @@ pip install -r requirements.txt
 # Start the proxy server
 python -m uvicorn app.main:app --reload
 
-# Open in Chrome or Edge
+# Open in any modern browser
 open http://localhost:8000
 ```
 
@@ -62,20 +62,18 @@ open http://localhost:8000
 ## Using the app
 
 1. **Wait** — the embedding model (`all-MiniLM-L6-v2`, ~23 MB) downloads automatically.
-2. **Pick an LLM** from the toolbar dropdown and click **Load**.
-   - First load downloads the model weights (800 MB – 2 GB, cached by browser).
+2. **Pick a quantization** from the toolbar dropdown and click **Load LFM2**.
+   - First load downloads the model weights (~229–379 MB, cached by browser).
 3. **Paste a blog URL** and click **Create Twin**.
 4. **Chat** — responses stream token by token from the in-browser LLM.
 
-### Available LLM models
+### Available quantizations (LiquidAI/LFM2-350M-GGUF)
 
-| Model | Size | Notes |
+| Quantization | Size | Notes |
 |---|---|---|
-| Llama 3.2 1B | ~800 MB | Fastest, good for quick answers |
-| SmolLM2 1.7B | ~1 GB | Compact, surprisingly capable |
-| Gemma 2 2B | ~1.5 GB | Google, strong reasoning |
-| Llama 3.2 3B | ~2 GB | Best quality in this size range |
-| Phi 3.5 Mini | ~2.2 GB | Microsoft, strong at instruction following |
+| Q4_K_M | ~229 MB | Default — good balance of size and quality |
+| Q5_K_M | ~260 MB | Slightly better quality |
+| Q8_0   | ~379 MB | Highest quality, largest download |
 
 ---
 
@@ -96,7 +94,8 @@ chatmyideas/
 | Layer | Library | Notes |
 |---|---|---|
 | Embeddings | [Transformers.js](https://github.com/xenova/transformers.js) v2 | ONNX, runs in main thread |
-| LLM | [WebLLM](https://github.com/mlc-ai/web-llm) | WebGPU, quantised models |
+| LLM | [wllama](https://github.com/ngxson/wllama) | llama.cpp → WebAssembly, GGUF from HuggingFace Hub |
+| LLM model | [LiquidAI/LFM2-350M-GGUF](https://huggingface.co/LiquidAI/LFM2-350M-GGUF) | Hybrid architecture, RAG-optimised, greedy decoding |
 | Vector search | Pure JS cosine similarity | In-memory, O(n) |
 | Persistence | IndexedDB | Chunks + embeddings survive page refresh |
 | Article parsing | [Readability.js](https://github.com/mozilla/readability) | Mozilla's article extractor |
@@ -105,12 +104,12 @@ chatmyideas/
 
 ## Browser compatibility
 
-| Browser | Embeddings | LLM (WebGPU) |
+| Browser | Embeddings | LLM (WASM) |
 |---|---|---|
 | Chrome 113+ | ✓ | ✓ |
 | Edge 113+   | ✓ | ✓ |
-| Firefox     | ✓ | ✗ (WebGPU behind flag) |
-| Safari      | ✓ | ✗ (partial WebGPU) |
+| Firefox     | ✓ | ✓ |
+| Safari      | ✓ | ✓ |
 
 ---
 
