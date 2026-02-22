@@ -1,0 +1,33 @@
+# ── Web framework ─────────────────────────────────────────────────────────────
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.12
+
+# ── Config ─────────────────────────────────────────────────────────────────────
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# ── Blog ingestion ────────────────────────────────────────────────────────────
+feedparser>=6.0.0
+trafilatura>=1.12.0
+beautifulsoup4>=4.12.0
+requests>=2.32.0
+lxml>=5.0.0
+
+# ── Vector store (default: ChromaDB / SQLite) ─────────────────────────────────
+chromadb>=0.5.0
+
+# ── Embeddings (local, no API key needed) ─────────────────────────────────────
+sentence-transformers>=3.0.0
+
+# ── LLM (Ollama) ──────────────────────────────────────────────────────────────
+ollama>=0.4.0
+
+# ── Optional: Redis vector store ──────────────────────────────────────────────
+# redis>=5.0.0   # uncomment if VECTOR_STORE=redis
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-asyncio>=0.24.0
+httpx>=0.28.0        # required by FastAPI TestClient
+numpy>=1.26.0        # used in test fixtures
