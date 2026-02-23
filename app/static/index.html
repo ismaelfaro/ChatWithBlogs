@@ -543,22 +543,20 @@ async function* streamWASM(messages, model) {
   const samp   = { temp: model.sampling.temp ?? 0.7 };
   if (model.sampling.top_p != null) samp.top_p = model.sampling.top_p;
 
-  const queue = []; let finished = false; let notify = null;
-  const push  = piece => { queue.push(piece); notify?.(); notify = null; };
-  const wait  = ()    => new Promise(r => { notify = r; });
-
-  wllama.createCompletion(prompt, {
+  // Use wllama's native stream:true API (AsyncIterable<CompletionChunk>)
+  // chunk.currentText is accumulated — compute delta from previous length
+  const stream = await wllama.createCompletion(prompt, {
     nPredict:    1024,
     stopStrings: model.stops,
     sampling:    samp,
-    onNewToken:  (_id, piece) => push(new TextDecoder().decode(piece)),
-  }).then(() => { finished = true; notify?.(); })
-    .catch(err => { finished = true; notify?.(); console.error(err); });
+    stream:      true,
+  });
 
-  while (true) {
-    if (queue.length)  { yield queue.shift(); }
-    else if (finished) { break; }
-    else               { await wait(); }
+  let prevLen = 0;
+  for await (const chunk of stream) {
+    const delta = chunk.currentText.slice(prevLen);
+    prevLen = chunk.currentText.length;
+    if (delta) yield delta;
   }
 }
 
