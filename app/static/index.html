@@ -780,9 +780,6 @@ async function embed(texts) {
 // is yielded to the chat UI one-by-one, giving smooth streaming on all devices.
 
 async function initWASM(model, onProg) {
-  // Terminate any previous worker to free its WASM memory before loading a new model
-  if (wasmWorker) { wasmWorker.terminate(); wasmWorker = null; }
-
   setStatus('llm', 'Initialising WASM…');
   wasmWorker = new Worker(_getWasmWorkerUrl(), { type: 'module' });
 
@@ -843,7 +840,6 @@ async function* streamWASM(messages, model) {
 async function initTransformersGPU(model, onProg) {
   if (!model.wasm) throw new Error(
     `${model.label} has no ONNX model — cannot use ONNX WebGPU. Choose a different model.`);
-  if (txGpuPipeline) { try { txGpuPipeline.dispose?.(); } catch {} txGpuPipeline = null; }
   setStatus('llm', 'Initialising ONNX WebGPU…');
   txGpuPipeline = await pipeline('text-generation', model.wasm.modelId, {
     dtype:   model.wasm.dtype,
@@ -891,7 +887,6 @@ async function initWebGPU(model, onProg) {
     setStatus('llm', 'Loading WebLLM…');
     webllmLib = await import('https://esm.run/@mlc-ai/web-llm');
   }
-  if (webllmEngine) { try { await webllmEngine.unload(); } catch {} webllmEngine = null; }
   webllmEngine = await webllmLib.CreateMLCEngine(model.webgpu.mlcId, {
     initProgressCallback: r => onProg(Math.round((r.progress || 0) * 100)),
   });
@@ -944,9 +939,17 @@ function resolveBackend(model) {
   return 'wasm';
 }
 
+// Returns 'loaded' | 'already-loaded' | 'cancelled'
 async function initModel(modelId) {
   const model = MODEL_MAP[modelId];
   if (!model) throw new Error('Unknown model: ' + modelId);
+
+  const backend = resolveBackend(model);
+
+  // Check idempotency FIRST — no point showing the size warning for an already-loaded model
+  if (activeModel?.id === modelId && activeBackend === backend) {
+    return 'already-loaded';
+  }
 
   // Warn mobile users before loading a model likely to exceed available RAM
   if (isMobile && model.mobileSizeMB > MOBILE_WARN_MB) {
@@ -954,10 +957,16 @@ async function initModel(modelId) {
       `${model.label} (${model.size}) may exceed this device's available memory and crash the browser tab.\n\n` +
       `For mobile, models under 400 MB are recommended.\n\nContinue anyway?`
     );
-    if (!ok) return;
+    if (!ok) return 'cancelled';
   }
 
-  const backend = resolveBackend(model);
+  // Tear down ALL existing backends before allocating a new one.
+  // Each init* only cleans its own state, so switching backends (e.g. wasm → txwebgpu)
+  // would otherwise leave the previous backend's resources alive in memory.
+  if (wasmWorker)    { wasmWorker.terminate(); wasmWorker = null; }
+  if (txGpuPipeline) { try { txGpuPipeline.dispose?.(); } catch {} txGpuPipeline = null; }
+  if (webllmEngine)  { try { await webllmEngine.unload(); } catch {} webllmEngine = null; }
+  activeModel = null; activeBackend = null;
 
   document.getElementById('llm-prog-wrap').style.display = 'flex';
   document.getElementById('load-llm-btn').disabled = true;
@@ -978,6 +987,7 @@ async function initModel(modelId) {
   document.getElementById('load-llm-btn').disabled = false;
   setStatus('llm', `${model.label} · ${backendLabel(backend)}`, 'ok');
   updateBackendBadge(backend);
+  return 'loaded';
 }
 
 async function* streamModel(messages) {
@@ -1549,14 +1559,19 @@ async function boot() {
   document.getElementById('load-llm-btn').addEventListener('click', async () => {
     const modelId = document.getElementById('llm-select').value;
     try {
-      await initModel(modelId);
-      toast(`${activeModel.label} ready (${backendLabel(activeBackend)})`, 'success');
-      // Auto-close model panel on mobile after successful load
-      if (window.matchMedia('(max-width: 767px)').matches) {
-        document.getElementById('mb-panel').classList.remove('open');
-        const tog = document.getElementById('mb-toggle');
-        tog.classList.remove('open'); tog.textContent = '⚙ Model';
+      const result = await initModel(modelId);
+      if (result === 'loaded') {
+        toast(`${activeModel.label} ready (${backendLabel(activeBackend)})`, 'success');
+        // Auto-close model panel on mobile after successful load
+        if (window.matchMedia('(max-width: 767px)').matches) {
+          document.getElementById('mb-panel').classList.remove('open');
+          const tog = document.getElementById('mb-toggle');
+          tog.classList.remove('open'); tog.textContent = '⚙ Model';
+        }
+      } else if (result === 'already-loaded') {
+        toast(`${activeModel.label} already loaded (${backendLabel(activeBackend)})`, 'success');
       }
+      // 'cancelled' → silent, nothing to do
     } catch (err) {
       const msg = err?.message || String(err);
       setStatus('llm', 'Error: ' + msg, 'err');
