@@ -3,7 +3,7 @@
 > All AI runs inside the browser — no Ollama, no Python vector store, no GPU server needed.
 
 Turn any blog/url into a conversational experience.
-Embeddings and LLM inference happen entirely in your browser via **Transformers.js v4 / ONNX Runtime Web**. The Python server only proxies external URLs to bypass CORS (not needed when using the GitHub Pages hosted version).
+Embeddings and LLM inference happen entirely in your browser via **Transformers.js v3 / ONNX Runtime Web**. The Python server only proxies external URLs to bypass CORS (not needed when using the GitHub Pages hosted version).
 
 ## Run now
 
@@ -25,14 +25,14 @@ Blog URL
    ▼  (browser — Readability.js)
  Extract article text
    │
-   ▼  (browser — Transformers.js v4 · all-MiniLM-L6-v2 · ONNX)
+   ▼  (browser — Transformers.js v3 · all-MiniLM-L6-v2 · ONNX)
  Chunk + embed  →  IndexedDB (persisted locally)
    │
  Chat query
    ├─ Embed query  ──► cosine similarity  ──► top-K chunks
    └─ Build prompt ("You are a digital twin of …")
               │
-              ▼  (browser — Transformers.js v4 WASM  or  WebLLM WebGPU)
+              ▼  (browser — Transformers.js v3 WASM  or  WebLLM WebGPU)
            LLM response (streamed token by token, thinking blocks collapsed)
 ```
 

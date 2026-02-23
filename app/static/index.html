@@ -532,8 +532,9 @@
 <script type="module">
 
 // ── Imports ────────────────────────────────────────────────────────────────
-// Transformers.js v4 — embeddings + WASM LLM inference via ONNX Runtime Web
-import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.0.0-next.4/dist/transformers.web.js';
+// Transformers.js v3 (3.7+ includes LFM2 architecture support)
+// Single-file bundle — no bare-specifier / import-map issues in the browser.
+import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/dist/transformers.js';
 import { marked }     from 'https://cdn.jsdelivr.net/npm/marked@15/+esm';
 import DOMPurify      from 'https://cdn.jsdelivr.net/npm/dompurify@3/+esm';
 
