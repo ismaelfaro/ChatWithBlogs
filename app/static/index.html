@@ -182,6 +182,20 @@
       border: 2px solid var(--border); border-top-color: var(--accent);
       border-radius: 50%; animation: spin 0.75s linear infinite;
     }
+    .think-block {
+      margin-bottom: 8px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); overflow: hidden; font-size: 0.78rem;
+    }
+    .think-block summary {
+      padding: 4px 8px; cursor: pointer; color: var(--text-muted);
+      background: var(--surface2); user-select: none; list-style: none;
+    }
+    .think-block summary::-webkit-details-marker { display: none; }
+    .think-content {
+      padding: 8px; color: var(--text-muted); white-space: pre-wrap;
+      font-size: 0.75rem; font-style: italic;
+      max-height: 200px; overflow-y: auto; border-top: 1px solid var(--border);
+    }
 
     .input-row {
       display: flex; gap: 8px; padding: 12px 24px 16px;
@@ -977,16 +991,53 @@ function buildChatUI(b) {
       spinner.className = 'llm-spinner';
       bubble.insertBefore(spinner, textNode);
 
+      let thinkDetails = null, thinkContent = null, thinkDone = false;
+
       for await (const token of streamModel(messages)) {
         spinner.remove();
         full += token;
-        textNode.nodeValue = full;
+
+        const tStart = full.indexOf('<think>');
+        const tEnd   = full.indexOf('</think>');
+
+        if (tStart !== -1) {
+          if (!thinkDetails) {
+            thinkDetails = document.createElement('details');
+            thinkDetails.className = 'think-block';
+            thinkDetails.setAttribute('open', '');
+            const summary = document.createElement('summary');
+            summary.textContent = 'Thinking…';
+            thinkContent = document.createElement('div');
+            thinkContent.className = 'think-content';
+            thinkDetails.append(summary, thinkContent);
+            bubble.insertBefore(thinkDetails, textNode);
+          }
+          if (tEnd === -1) {
+            thinkContent.textContent = full.slice(tStart + 7);
+            textNode.nodeValue = '';
+          } else {
+            thinkContent.textContent = full.slice(tStart + 7, tEnd).trim();
+            textNode.nodeValue = full.slice(tEnd + 8).trimStart();
+            if (!thinkDone) {
+              thinkDone = true;
+              thinkDetails.removeAttribute('open');
+              thinkDetails.querySelector('summary').textContent = 'Thought process \u25b8 click to expand';
+            }
+          }
+          if (thinkContent) thinkContent.scrollTop = thinkContent.scrollHeight;
+        } else {
+          textNode.nodeValue = full;
+        }
         msgs.scrollTop = msgs.scrollHeight;
       }
-      spinner.remove(); // no-op if already removed, cleans up on empty response
+      spinner.remove();
 
+      const answerForHistory = (() => {
+        const i = full.indexOf('</think>');
+        return i !== -1 ? full.slice(i + 8).trimStart() : full;
+      })();
       history.push({ role: 'user',      content: text });
-      history.push({ role: 'assistant', content: full });
+      history.push({ role: 'assistant', content: answerForHistory });
     } catch (err) {
       typingEl?.remove();
       appendMsg(msgs, 'error', String(err));
