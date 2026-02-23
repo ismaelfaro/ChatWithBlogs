@@ -34,7 +34,7 @@
 
     /* ── Model bar ─────────────────────────────────────────────────────────── */
     #model-bar {
-      background: #0a0d14; border-bottom: 1px solid var(--border);
+      background: #0a0d14; border-top: 1px solid var(--border);
       padding: 6px 20px; display: flex; align-items: center; gap: 16px;
       flex-shrink: 0; font-size: 0.75rem; flex-wrap: wrap;
     }
@@ -137,6 +137,39 @@
 
     /* ── Chat ────────────────────────────────────────────────────────────────── */
     .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── Auto-run overlay ─────────────────────────────────────────────────── */
+    #autorun-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15, 17, 23, 0.93);
+      display: none; align-items: center; justify-content: center; z-index: 1000;
+    }
+    #autorun-overlay.visible { display: flex; }
+    .ar-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 32px 40px;
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      min-width: 300px; max-width: 420px;
+    }
+    .ar-spinner {
+      width: 46px; height: 46px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    .ar-title  { font-size: 0.97rem; font-weight: 600; color: var(--text); }
+    .ar-detail { font-size: 0.76rem; color: var(--text-muted); min-height: 1.1em; }
+    .ar-steps  {
+      list-style: none; padding: 0; margin: 0; width: 100%;
+      border-top: 1px solid var(--border); padding-top: 14px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .ar-steps li {
+      font-size: 0.8rem; color: var(--text-muted);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .ar-step-icon { font-size: 0.9rem; width: 16px; text-align: center; flex-shrink: 0; }
+    .ar-steps li.ar-done   { color: var(--success); }
+    .ar-steps li.ar-active { color: var(--text); }
     .empty-state {
       flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
@@ -161,11 +194,41 @@
     .message.bot  .avatar { background: var(--surface2); border: 1px solid var(--border); }
     .bubble {
       max-width: 78%; padding: 10px 14px; font-size: 0.86rem;
-      line-height: 1.65; white-space: pre-wrap; word-break: break-word;
-      border-radius: var(--radius);
+      line-height: 1.65; word-break: break-word; border-radius: var(--radius);
     }
-    .message.user .bubble { background: var(--user-bubble); border-radius: var(--radius) 4px var(--radius) var(--radius); }
+    .message.user .bubble { background: var(--user-bubble); border-radius: var(--radius) 4px var(--radius) var(--radius); white-space: pre-wrap; }
     .message.bot  .bubble { background: var(--bot-bubble); border: 1px solid var(--border); border-radius: 4px var(--radius) var(--radius) var(--radius); }
+
+    /* markdown rendered inside bot bubbles */
+    .md-content p  { margin-bottom: 0.55em; }
+    .md-content p:last-child { margin-bottom: 0; }
+    .md-content ul, .md-content ol { padding-left: 1.4em; margin-bottom: 0.55em; }
+    .md-content li { margin-bottom: 0.2em; }
+    .md-content h1, .md-content h2, .md-content h3,
+    .md-content h4, .md-content h5, .md-content h6 {
+      font-weight: 600; margin: 0.7em 0 0.3em; color: var(--text);
+    }
+    .md-content h1 { font-size: 1.05rem; }
+    .md-content h2 { font-size: 0.97rem; }
+    .md-content h3 { font-size: 0.9rem;  }
+    .md-content code {
+      background: var(--surface2); padding: 1px 5px; border-radius: 4px;
+      font-family: monospace; font-size: 0.84em;
+    }
+    .md-content pre {
+      background: var(--surface2); padding: 10px 12px;
+      border-radius: var(--radius-sm); overflow-x: auto; margin-bottom: 0.55em;
+    }
+    .md-content pre code { background: none; padding: 0; }
+    .md-content blockquote {
+      border-left: 3px solid var(--border); padding-left: 10px;
+      color: var(--text-muted); margin: 0.4em 0;
+    }
+    .md-content a { color: var(--accent); }
+    .md-content hr { border: none; border-top: 1px solid var(--border); margin: 0.6em 0; }
+    .md-content table { border-collapse: collapse; width: 100%; margin-bottom: 0.55em; font-size: 0.82rem; }
+    .md-content th, .md-content td { border: 1px solid var(--border); padding: 4px 8px; }
+    .md-content th { background: var(--surface2); }
     .sources { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 0.7rem; color: var(--text-muted); }
     .sources a { color: var(--accent); text-decoration: none; margin-left: 4px; }
     .sources a:hover { text-decoration: underline; }
@@ -214,7 +277,7 @@
     #send-btn { padding: 10px 14px; font-size: 1rem; align-self: flex-end; flex-shrink: 0; width: auto; }
 
     #toast {
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      position: fixed; bottom: 52px; left: 50%; transform: translateX(-50%);
       padding: 10px 20px; border-radius: var(--radius); font-size: 0.8rem; font-weight: 600;
       background: var(--surface2); border: 1px solid var(--border);
       opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999;
@@ -229,46 +292,6 @@
   </style>
 </head>
 <body>
-
-<!-- ── Model bar ──────────────────────────────────────────────────────────── -->
-<div id="model-bar">
-  <div class="mb-item">
-    <span class="mb-label">Embedder</span>
-    <span class="mb-status" id="embed-status">starting…</span>
-  </div>
-  <div class="mb-sep"></div>
-  <div class="mb-item">
-    <span class="mb-label">Backend</span>
-    <select class="llm-select" id="backend-select">
-      <option value="auto">Auto (WebGPU if available)</option>
-      <option value="wasm">WebAssembly (all browsers)</option>
-      <option value="webgpu">WebGPU (Chrome / Edge)</option>
-    </select>
-  </div>
-  <div class="mb-sep"></div>
-  <div class="mb-item">
-    <span class="mb-label">Model</span>
-    <select class="llm-select" id="llm-select">
-      <optgroup label="── WebGPU + WASM ──">
-        <option value="qwen3-0.6b" selected>Qwen3-0.6B (~350 MB) · WASM+GPU</option>
-        <option value="qwen3-1.7b">Qwen3-1.7B (~950 MB) · WASM+GPU</option>
-        <option value="gemma2-2b">Gemma 2 2B (1.71 GB) · GPU only</option>
-      </optgroup>
-      <optgroup label="── WASM only ──">
-        <option value="lfm2.5-1.2b">LFM2.5-1.2B Instruct (~700 MB) · WASM</option>
-        <option value="lfm2.5-1.2b-thinking">LFM2.5-1.2B Thinking (~700 MB) · WASM</option>
-        <option value="gemma3-270m">Gemma 3 270M (~260 MB) · WASM</option>
-      </optgroup>
-    </select>
-    <button class="btn btn-sm btn-primary" id="load-llm-btn">Load</button>
-    <div id="llm-prog-wrap">
-      <div id="llm-bar"><div id="llm-bar-fill"></div></div>
-      <span id="llm-pct">0%</span>
-    </div>
-    <span class="mb-status" id="llm-status">not loaded</span>
-  </div>
-  <span id="backend-badge">⚙ WebAssembly · all browsers</span>
-</div>
 
 <!-- ── Header ────────────────────────────────────────────────────────────── -->
 <header>
@@ -313,7 +336,64 @@
   </div>
 </main>
 
+<!-- ── Model bar (status bar) ─────────────────────────────────────────────── -->
+<div id="model-bar">
+  <div class="mb-item">
+    <span class="mb-label">Embedder</span>
+    <span class="mb-status" id="embed-status">starting…</span>
+  </div>
+  <div class="mb-sep"></div>
+  <div class="mb-item">
+    <span class="mb-label">Backend</span>
+    <select class="llm-select" id="backend-select">
+      <option value="auto">Auto (WebGPU if available)</option>
+      <option value="wasm">WebAssembly (all browsers)</option>
+      <option value="webgpu">WebGPU (Chrome / Edge)</option>
+    </select>
+  </div>
+  <div class="mb-sep"></div>
+  <div class="mb-item">
+    <span class="mb-label">Model</span>
+    <select class="llm-select" id="llm-select">
+      <optgroup label="── WebGPU + WASM ──">
+        <option value="qwen3-0.6b" selected>Qwen3-0.6B (~350 MB) · WASM+GPU</option>
+        <option value="qwen3-1.7b">Qwen3-1.7B (~950 MB) · WASM+GPU</option>
+        <option value="gemma2-2b">Gemma 2 2B (1.71 GB) · GPU only</option>
+      </optgroup>
+      <optgroup label="── WASM only ──">
+        <option value="lfm2.5-1.2b">LFM2.5-1.2B Instruct (~700 MB) · WASM</option>
+        <option value="lfm2.5-1.2b-thinking">LFM2.5-1.2B Thinking (~700 MB) · WASM</option>
+        <option value="gemma3-270m">Gemma 3 270M (~260 MB) · WASM</option>
+        <option value="granite4-350m">Granite 4.0 350M (~350 MB) · WASM</option>
+        <option value="granite4-1b">Granite 4.0 1B (~700 MB) · WASM</option>
+      </optgroup>
+    </select>
+    <button class="btn btn-sm btn-primary" id="load-llm-btn">Load</button>
+    <div id="llm-prog-wrap">
+      <div id="llm-bar"><div id="llm-bar-fill"></div></div>
+      <span id="llm-pct">0%</span>
+    </div>
+    <span class="mb-status" id="llm-status">not loaded</span>
+  </div>
+  <span id="backend-badge">⚙ WebAssembly · all browsers</span>
+</div>
+
 <div id="toast"></div>
+
+<div id="autorun-overlay">
+  <div class="ar-card">
+    <div class="ar-spinner"></div>
+    <div class="ar-title"  id="ar-title">Preparing…</div>
+    <div class="ar-detail" id="ar-detail"></div>
+    <ol class="ar-steps">
+      <li id="ar-step-embed"><span class="ar-step-icon">○</span>Loading embeddings model</li>
+      <li id="ar-step-llm">  <span class="ar-step-icon">○</span>Loading LLM (Qwen3-0.6B)</li>
+      <li id="ar-step-fetch"><span class="ar-step-icon">○</span>Fetching blog</li>
+      <li id="ar-step-index"><span class="ar-step-icon">○</span>Indexing articles</li>
+      <li id="ar-step-chat"> <span class="ar-step-icon">○</span>Starting chat</li>
+    </ol>
+  </div>
+</div>
 
 <!-- ── Application ───────────────────────────────────────────────────────── -->
 <script type="module">
@@ -321,6 +401,10 @@
 // ── Imports ────────────────────────────────────────────────────────────────
 // Transformers.js v3 — embeddings + WASM LLM inference via ONNX Runtime Web
 import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/dist/transformers.js';
+import { marked }     from 'https://cdn.jsdelivr.net/npm/marked@15/+esm';
+import DOMPurify      from 'https://cdn.jsdelivr.net/npm/dompurify@3/+esm';
+
+marked.setOptions({ breaks: true, gfm: true });
 
 // ── Model registry ─────────────────────────────────────────────────────────
 //   wasm:   { modelId, dtype }       — ONNX via Transformers.js (all browsers)
@@ -355,6 +439,14 @@ const MODEL_LIST = [
   { id:'gemma3-270m',   label:'Gemma 3 270M',         size:'~260 MB',
     sampling:{temp:1.0,top_p:0.9},
     wasm: {modelId:'onnx-community/gemma-3-270m-it-ONNX', dtype:'fp32'} },
+
+  { id:'granite4-350m', label:'Granite 4.0 350M',      size:'~350 MB',
+    sampling:{temp:0.7,top_p:0.9},
+    wasm: {modelId:'onnx-community/granite-4.0-h-350m-ONNX', dtype:'q4'} },
+
+  { id:'granite4-1b',   label:'Granite 4.0 1B',        size:'~700 MB',
+    sampling:{temp:0.7,top_p:0.9},
+    wasm: {modelId:'onnx-community/granite-4.0-h-1b-ONNX',   dtype:'q4'} },
 ];
 
 const MODEL_MAP = Object.fromEntries(MODEL_LIST.map(m => [m.id, m]));
@@ -580,7 +672,7 @@ function updateBackendBadge(backend) {
 
 // ── URL proxy ─────────────────────────────────────────────────────────────
 // When running locally (Python server), use the FastAPI /api/proxy endpoint.
-// When hosted on GitHub Pages (or any static host), fall back to allorigins.win.
+// When hosted on GitHub Pages (or any static host), fall back to corsproxy.io.
 const _useLocalProxy = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 async function fetchURL(url) {
@@ -593,15 +685,14 @@ async function fetchURL(url) {
     if (!r.ok) throw new Error(`Proxy error ${r.status}`);
     return r.json();
   }
-  // Public CORS proxy — returns { contents, status: { url, content_type, http_code } }
-  const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+  // Public CORS proxy — passes through original headers including content-type
+  const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
   if (!r.ok) throw new Error(`Proxy error ${r.status}`);
-  const data = await r.json();
   return {
-    url:          data.status?.url          || url,
-    status:       data.status?.http_code    || 200,
-    content_type: data.status?.content_type || '',
-    text:         data.contents             || '',
+    url,
+    status:       r.status,
+    content_type: r.headers.get('content-type') || '',
+    text:         await r.text(),
   };
 }
 
@@ -912,15 +1003,20 @@ function buildChatUI(b) {
         { role: 'user',      content: text },
       ];
 
-      const botEl    = appendMsg(msgs, 'bot', '', sources);
-      const bubble   = botEl.querySelector('.bubble');
-      const textNode = bubble.firstChild;
+      const botEl  = appendMsg(msgs, 'bot', '', sources);
+      const bubble = botEl.querySelector('.bubble');
+      const mdDiv  = bubble.firstChild;   // div.md-content created by appendMsg
       let full = '';
+
+      // helper — render answer text as sanitised markdown
+      const renderMd = text => {
+        mdDiv.innerHTML = DOMPurify.sanitize(marked.parse(text || ''));
+      };
 
       // Show spinner until first token arrives
       const spinner = document.createElement('span');
       spinner.className = 'llm-spinner';
-      bubble.insertBefore(spinner, textNode);
+      bubble.insertBefore(spinner, mdDiv);
 
       let thinkDetails = null, thinkContent = null, thinkDone = false;
 
@@ -941,14 +1037,14 @@ function buildChatUI(b) {
             thinkContent = document.createElement('div');
             thinkContent.className = 'think-content';
             thinkDetails.append(summary, thinkContent);
-            bubble.insertBefore(thinkDetails, textNode);
+            bubble.insertBefore(thinkDetails, mdDiv);
           }
           if (tEnd === -1) {
             thinkContent.textContent = full.slice(tStart + 7);
-            textNode.nodeValue = '';
+            renderMd('');
           } else {
             thinkContent.textContent = full.slice(tStart + 7, tEnd).trim();
-            textNode.nodeValue = full.slice(tEnd + 8).trimStart();
+            renderMd(full.slice(tEnd + 8).trimStart());
             if (!thinkDone) {
               thinkDone = true;
               thinkDetails.removeAttribute('open');
@@ -957,7 +1053,7 @@ function buildChatUI(b) {
           }
           if (thinkContent) thinkContent.scrollTop = thinkContent.scrollHeight;
         } else {
-          textNode.nodeValue = full;
+          renderMd(full);
         }
         msgs.scrollTop = msgs.scrollHeight;
       }
@@ -994,7 +1090,15 @@ function appendMsg(container, role, text, sources) {
     <div class="avatar">${isUser ? '👤' : '🧠'}</div>
     <div class="bubble" style="${isError ? 'color:var(--error);border-color:var(--error)' : ''}">${sourcesHTML}</div>`;
 
-  wrap.querySelector('.bubble').insertBefore(document.createTextNode(text), wrap.querySelector('.bubble').firstChild);
+  const bubble = wrap.querySelector('.bubble');
+  if (isUser || isError) {
+    bubble.insertBefore(document.createTextNode(text), bubble.firstChild);
+  } else {
+    const md = document.createElement('div');
+    md.className = 'md-content';
+    if (text) md.innerHTML = DOMPurify.sanitize(marked.parse(text));
+    bubble.insertBefore(md, bubble.firstChild);
+  }
   container.appendChild(wrap);
   container.scrollTop = container.scrollHeight;
   return wrap;
@@ -1054,7 +1158,7 @@ async function boot() {
   await renderBlogList();
 
   // Embedder downloads in background (~23 MB, cached after first run)
-  initEmbedder().catch(err => setStatus('embed', 'Error: ' + err.message, 'err'));
+  initEmbedder().catch(err => setStatus('embed', 'Error: ' + (err?.message || String(err)), 'err'));
 
   // Load button
   document.getElementById('load-llm-btn').addEventListener('click', async () => {
@@ -1063,8 +1167,9 @@ async function boot() {
       await initModel(modelId);
       toast(`${activeModel.label} ready (${activeBackend === 'webgpu' ? 'WebGPU' : 'WASM'})`, 'success');
     } catch (err) {
-      setStatus('llm', 'Error: ' + err.message, 'err');
-      toast('Load failed: ' + err.message, 'error');
+      const msg = err?.message || String(err);
+      setStatus('llm', 'Error: ' + msg, 'err');
+      toast('Load failed: ' + msg, 'error');
       document.getElementById('load-llm-btn').disabled = false;
       document.getElementById('llm-prog-wrap').style.display = 'none';
     }
@@ -1090,33 +1195,90 @@ function waitForEmbedder() {
   });
 }
 
+// Helpers to drive the overlay UI
+function arShow()                { document.getElementById('autorun-overlay').classList.add('visible'); }
+function arHide()                { document.getElementById('autorun-overlay').classList.remove('visible'); }
+function arTitle(t)              { document.getElementById('ar-title').textContent = t; }
+function arDetail(t)             { document.getElementById('ar-detail').textContent = t; }
+function arStep(id, state) {     // state: 'active' | 'done' | ''
+  const el = document.getElementById('ar-step-' + id);
+  el.className = state ? 'ar-' + state : '';
+  const icon = el.querySelector('.ar-step-icon');
+  icon.textContent = state === 'done' ? '✓' : state === 'active' ? '◉' : '○';
+}
+
 async function autoRun(targetUrl) {
+  document.getElementById('llm-select').value = 'qwen3-0.6b';
+  arShow();
+
   try {
-    // 1. Pre-select the model in the dropdown
-    document.getElementById('llm-select').value = 'qwen3-0.6b';
-    toast('Auto mode: waiting for embedder…');
-
-    // 2. Wait for the embedding model to finish downloading
+    // 1. Embeddings model
+    arTitle('Loading embeddings model…');
+    arDetail('Downloading all-MiniLM-L6-v2 (~23 MB) — cached after first run');
+    arStep('embed', 'active');
     await waitForEmbedder();
+    arStep('embed', 'done');
+    arDetail('');
 
-    // 3. Load the LLM
-    toast('Auto mode: loading Qwen3-0.6B…');
+    // 2. LLM
+    arTitle('Loading LLM…');
+    arDetail('Downloading Qwen3-0.6B ONNX — cached after first run');
+    arStep('llm', 'active');
+
+    // Mirror the LLM progress bar into the overlay detail line
+    const origOnProg = pct => arDetail(`Downloading… ${pct}%`);
+    const _origBar   = document.getElementById('llm-bar-fill');
+    const _origPct   = document.getElementById('llm-pct');
+    // Patch progress updates to also drive the detail line
+    const origFill = _origBar.style.width;
+    const observer = new MutationObserver(() => {
+      arDetail(`Downloading… ${_origPct.textContent}`);
+    });
+    observer.observe(_origPct, { childList: true, characterData: true, subtree: true });
+
     await initModel('qwen3-0.6b');
+    observer.disconnect();
+    arStep('llm', 'done');
+    arDetail('');
 
-    // 4. Ingest the blog
-    toast('Auto mode: ingesting blog…');
-    const blog = await ingestBlog(targetUrl, (r, m) => setIngestProg(r, m));
+    // 3. Fetch blog
+    arTitle('Fetching blog…');
+    arDetail(targetUrl);
+    arStep('fetch', 'active');
+
+    // 4. Index articles — ingestBlog covers both fetch + index
+    arStep('index', 'active');
+    const blog = await ingestBlog(targetUrl, (ratio, msg) => {
+      arDetail(msg);
+      if (ratio > 0.07) {          // fetch done, now indexing
+        arStep('fetch', 'done');
+        arStep('index', 'active');
+      }
+    });
     document.getElementById('ingest-prog').style.display = 'none';
+    arStep('fetch', 'done');
+    arStep('index', 'done');
+
     await renderBlogList();
     selectBlog(blog);
 
-    // 5. Fire the summary query once the chat UI is ready
-    toast(`✓ ${blog.articleCount} article(s) loaded — generating summary…`, 'success');
-    await new Promise(r => setTimeout(r, 300)); // let buildChatUI settle
+    // 5. Starting chat
+    arTitle('Starting chat…');
+    arDetail(`${blog.articleCount} article(s) indexed`);
+    arStep('chat', 'active');
+    await new Promise(r => setTimeout(r, 300));
+    arStep('chat', 'done');
+
+    arHide();
     _triggerSend?.('What are the main ideas and key topics covered here? Give me a concise summary.');
+
   } catch (err) {
+    arTitle('Something went wrong');
+    arDetail(err?.message || String(err));
+    document.getElementById('autorun-overlay').querySelector('.ar-spinner').style.display = 'none';
     document.getElementById('ingest-prog').style.display = 'none';
-    toast('Auto mode failed: ' + err.message, 'error');
+    // Leave overlay visible so user can read the error; click anywhere to dismiss
+    document.getElementById('autorun-overlay').addEventListener('click', arHide, { once: true });
   }
 }
 

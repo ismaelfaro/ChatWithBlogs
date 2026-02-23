@@ -99,6 +99,8 @@ This is useful for sharing a direct link that drops someone straight into a conv
 | LFM2.5-1.2B Instruct | ~700 MB | WASM | Liquid AI, fast RAG |
 | LFM2.5-1.2B Thinking | ~700 MB | WASM | Liquid AI, reasoning variant |
 | Gemma 3 270M | ~260 MB | WASM | Tiny, surprisingly capable |
+| Granite 4.0 350M | ~350 MB | WASM | IBM Granite 4.0 compact |
+| Granite 4.0 1B | ~700 MB | WASM | IBM Granite 4.0 base |
 
 Models with **WASM + WebGPU** use WebGPU automatically when available (Chrome/Edge), falling back to WASM otherwise. Switch manually with the backend selector in the toolbar.
 
