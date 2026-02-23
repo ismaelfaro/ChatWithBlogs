@@ -3,7 +3,7 @@
 > All AI runs inside the browser — no Ollama, no Python vector store, no GPU server needed.
 
 Turn any blog into a conversational digital twin of its author.
-Embeddings and LLM inference happen entirely in your browser via **Transformers.js / ONNX Runtime Web**. The Python server only proxies external URLs to bypass CORS.
+Embeddings and LLM inference happen entirely in your browser via **Transformers.js v3 / ONNX Runtime Web**. The Python server only proxies external URLs to bypass CORS (not needed when using the GitHub Pages hosted version).
 
 ---
 
@@ -12,38 +12,36 @@ Embeddings and LLM inference happen entirely in your browser via **Transformers.
 ```
 Blog URL
    │
-   ▼  (server-side CORS proxy)
+   ▼  (CORS proxy — local FastAPI server or allorigins.win on GitHub Pages)
  Fetch HTML / RSS
    │
    ▼  (browser — Readability.js)
  Extract article text
    │
-   ▼  (browser — Transformers.js · all-MiniLM-L6-v2)
+   ▼  (browser — Transformers.js v3 · all-MiniLM-L6-v2 · ONNX)
  Chunk + embed  →  IndexedDB (persisted locally)
    │
  Chat query
    ├─ Embed query  ──► cosine similarity  ──► top-K chunks
    └─ Build prompt ("You are a digital twin of …")
               │
-              ▼  (browser — wllama · WebAssembly · LFM2-350M-GGUF)
-           LLM response (streamed token by token)
+              ▼  (browser — Transformers.js v3 WASM  or  WebLLM WebGPU)
+           LLM response (streamed token by token, thinking blocks collapsed)
 ```
 
 **Nothing leaves your machine after the initial model download.**
 
 ---
 
-## Requirements
+## Usage options
 
-| Requirement | Notes |
-|---|---|
-| Python 3.11+ | Server (proxy only) |
-| Any modern browser | Chrome, Firefox, Safari, Edge — no WebGPU needed |
-| Internet (first run) | Models are downloaded and cached by the browser |
+### Option A — GitHub Pages (no install required)
 
----
+Open the hosted version directly in your browser. The CORS proxy is handled automatically via [allorigins.win](https://allorigins.win).
 
-## Quick Start
+> Enable GitHub Pages in your repo: **Settings → Pages → Source → GitHub Actions**
+
+### Option B — Run locally
 
 ```bash
 # Install minimal Python deps
@@ -61,38 +59,41 @@ open http://localhost:8000
 ## Using the app
 
 1. **Wait** — the embedding model (`all-MiniLM-L6-v2`, ~23 MB) downloads automatically.
-2. **Pick a quantization** from the toolbar dropdown and click **Load LFM2**.
-   - First load downloads the model weights (~229–379 MB, cached by browser).
-3. **Paste a blog URL** and click **Create Twin**.
-4. **Chat** — responses stream token by token from the in-browser LLM.
+2. **Pick a model** from the toolbar dropdown and click **Load**.
+   - First load downloads the ONNX model weights (cached by the browser).
+   - WebGPU models are faster on Chrome/Edge; WASM works on all browsers.
+3. **Paste a blog URL** and click **Add Blog** — or pass `?url=<blog-url>` to auto-run.
+4. **Chat** — responses stream token by token. Thinking blocks (`<think>…</think>`) are shown live then collapsed into a summary.
 
-### Available models
+---
+
+## Available models
 
 | Model | Size | Backend | Notes |
 |---|---|---|---|
-| LFM2-350M · Q4_K_M | 229 MB | WASM | Default — fast RAG, greedy decoding |
-| LFM2-350M · Q5_K_M | 260 MB | WASM | Slightly better quality |
-| LFM2-350M · Q8_0   | 379 MB | WASM | Highest quality LFM2-350M |
-| LFM2-1.2B · Q4_K_M | 731 MB | WASM | Larger LFM2 base |
-| LFM2-1.2B-RAG · Q4_K_M | 731 MB | WASM | RAG-tuned LFM2 1.2B |
-| Gemma 3 270M · Q4_K_M | 253 MB | WASM | Tiny Gemma 3, surprisingly capable |
-| Gemma 2 2B · Q4_K_M | 1.71 GB | WASM + WebGPU | Google, solid reasoning |
-| Granite 4.0 1B (MXFP4) | 1.55 GB | WASM | IBM Granite hybrid quant |
-| Qwen3-0.6B · Q4_K_M | 397 MB | WASM + WebGPU | Alibaba Qwen3, non-thinking mode |
-| Qwen3-1.7B · Q4_K_M | 1.11 GB | WASM + WebGPU | Larger Qwen3, good quality |
+| Qwen3-0.6B | ~350 MB | WASM + WebGPU | Default · Alibaba Qwen3, thinking mode |
+| Qwen3-1.7B | ~950 MB | WASM + WebGPU | Larger Qwen3, better quality |
+| Gemma 2 2B | 1.71 GB | WebGPU only | Google, solid reasoning |
+| LFM2.5-1.2B Instruct | ~700 MB | WASM | Liquid AI, fast RAG |
+| LFM2.5-1.2B Thinking | ~700 MB | WASM | Liquid AI, reasoning variant |
+| Gemma 3 270M | ~260 MB | WASM | Tiny, surprisingly capable |
 
-Models marked **WASM + WebGPU** can use either backend. On Chrome/Edge with WebGPU, select "Auto" or "WebGPU" in the toolbar for faster inference.
+Models with **WASM + WebGPU** use WebGPU automatically when available (Chrome/Edge), falling back to WASM otherwise. Switch manually with the backend selector in the toolbar.
 
 ---
 
 ## Architecture
 
 ```
-chatmyideas/
+chatwithblogs/
+├── .github/
+│   └── workflows/
+│       └── pages.yml    # Auto-deploy app/static/ to GitHub Pages on push to main
 ├── app/
-│   ├── main.py          # FastAPI — CORS proxy + static file server only
+│   ├── main.py          # FastAPI — CORS proxy + static file server (local use only)
 │   └── static/
-│       └── index.html   # Full SPA: ingestion, RAG, chat — all in-browser
+│       ├── index.html   # Full SPA: ingestion, RAG, chat — all in-browser
+│       └── .nojekyll    # Disables Jekyll on GitHub Pages
 ├── requirements.txt     # fastapi, uvicorn, httpx only
 └── README.md
 ```
@@ -101,32 +102,25 @@ chatmyideas/
 
 | Layer | Library | Notes |
 |---|---|---|
-| Embeddings | [Transformers.js](https://github.com/xenova/transformers.js) v2 | ONNX, runs in main thread |
-| LLM (WASM) | [wllama](https://github.com/ngxson/wllama) | llama.cpp → WebAssembly, GGUF from HuggingFace Hub |
-| LLM (WebGPU) | [WebLLM](https://github.com/mlc-ai/web-llm) | MLC quantised models, GPU accelerated |
+| Embeddings | [Transformers.js](https://huggingface.co/docs/transformers.js) v3 | ONNX, `Xenova/all-MiniLM-L6-v2` |
+| LLM — WASM | [Transformers.js](https://huggingface.co/docs/transformers.js) v3 | ONNX Runtime Web, all browsers |
+| LLM — WebGPU | [WebLLM](https://github.com/mlc-ai/web-llm) | MLC quantised models, GPU accelerated |
 | Vector search | Pure JS cosine similarity | In-memory, O(n) |
 | Persistence | IndexedDB | Chunks + embeddings survive page refresh |
 | Article parsing | [Readability.js](https://github.com/mozilla/readability) | Mozilla's article extractor |
+| CORS proxy (local) | FastAPI + httpx | Used when running the Python server |
+| CORS proxy (hosted) | [allorigins.win](https://allorigins.win) | Used on GitHub Pages and static hosts |
 
 ---
 
 ## Browser compatibility
 
-| Browser | Embeddings | LLM (WASM) |
-|---|---|---|
-| Chrome 113+ | ✓ | ✓ |
-| Edge 113+   | ✓ | ✓ |
-| Firefox     | ✓ | ✓ |
-| Safari      | ✓ | ✓ |
-
----
-
-## Other branches
-
-| Branch | Description |
-|---|---|
-| `main` | Server-side RAG — Ollama + ChromaDB/Redis + sentence-transformers |
-| `browser-local` | **This branch** — everything runs in the browser |
+| Browser | Embeddings | LLM (WASM) | LLM (WebGPU) |
+|---|---|---|---|
+| Chrome 113+ | ✓ | ✓ | ✓ |
+| Edge 113+   | ✓ | ✓ | ✓ |
+| Firefox     | ✓ | ✓ | — |
+| Safari      | ✓ | ✓ | — |
 
 ---
 
