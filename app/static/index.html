@@ -616,9 +616,73 @@ const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.
 // Models above this threshold trigger a confirmation prompt on mobile
 const MOBILE_WARN_MB = 500;
 
+// ── WASM Worker source ─────────────────────────────────────────────────────
+// Runs the LLM pipeline in a dedicated Web Worker so WASM execution never
+// blocks the main thread.  Token callbacks are sent back via postMessage.
+const WASM_WORKER_SRC = `
+import { pipeline, env, TextStreamer }
+  from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/dist/transformers.js';
+
+env.allowLocalModels = false;
+env.useBrowserCache  = true;
+
+let _pipe = null;
+
+self.onmessage = async ({ data }) => {
+  const { type } = data;
+
+  if (type === 'load') {
+    try {
+      try {
+        const ow = env.backends?.onnx?.wasm;
+        if (ow) { ow.numThreads = data.numThreads ?? 1; ow.proxy = false; }
+      } catch (_) {}
+      _pipe = await pipeline('text-generation', data.modelId, {
+        dtype:  data.dtype,
+        device: 'wasm',
+        progress_callback: ({ status, progress }) => {
+          if (status === 'progress')
+            self.postMessage({ type: 'progress', pct: Math.round(progress ?? 0) });
+        },
+      });
+      self.postMessage({ type: 'loaded' });
+    } catch (err) {
+      self.postMessage({ type: 'error', msg: err?.message || String(err) });
+    }
+  }
+
+  if (type === 'generate') {
+    try {
+      const streamer = new TextStreamer(_pipe.tokenizer, {
+        skip_prompt: true, skip_special_tokens: true,
+        callback_function: text => self.postMessage({ type: 'token', text }),
+      });
+      await _pipe(data.messages, {
+        max_new_tokens: data.maxTokens,
+        temperature:    data.temp,
+        top_p:          data.topP,
+        do_sample:      data.doSample,
+        streamer,
+      });
+      self.postMessage({ type: 'done' });
+    } catch (err) {
+      self.postMessage({ type: 'error', msg: err?.message || String(err) });
+    }
+  }
+};`;
+
+let _wasmWorkerUrl = null;
+function _getWasmWorkerUrl() {
+  if (!_wasmWorkerUrl) {
+    const blob = new Blob([WASM_WORKER_SRC], { type: 'text/javascript' });
+    _wasmWorkerUrl = URL.createObjectURL(blob);
+  }
+  return _wasmWorkerUrl;
+}
+
 // ── Global state ───────────────────────────────────────────────────────────
-let embedder     = null;   // Transformers.js pipeline (embeddings)
-let txPipeline   = null;   // Transformers.js pipeline (LLM, WASM)
+let embedder     = null;   // Transformers.js pipeline (embeddings, main thread)
+let wasmWorker   = null;   // Web Worker running the WASM LLM pipeline
 let webllmEngine = null;   // WebLLM MLCEngine
 let webllmLib    = null;   // WebLLM module (lazy-loaded on first GPU use)
 let activeModel  = null;   // currently loaded MODEL_LIST entry
@@ -679,20 +743,11 @@ async function initEmbedder() {
   env.allowLocalModels = false;
   env.useBrowserCache  = true;
 
-  // ── ONNX Runtime Web configuration ───────────────────────────────────────
-  // numThreads: mobile devices have limited memory bandwidth; 1 thread avoids
-  // contention and OOM crashes. Desktop gets up to 4 threads for throughput.
-  // Wrapped in try/catch because the exact env path may vary between versions.
+  // Embedder runs on the main thread (small model, ~23 MB).
+  // 1 thread is sufficient and keeps the main thread free for UI work.
   try {
-    const onnxWasm = env.backends?.onnx?.wasm ?? env.backends?.ort?.wasm;
-    if (onnxWasm) {
-      onnxWasm.numThreads = isMobile
-        ? 1
-        : Math.min(4, navigator.hardwareConcurrency || 4);
-      // proxy=false: run ONNX directly (simpler, no SharedArrayBuffer needed
-      // on deployed builds, UI stays responsive via async TextStreamer)
-      onnxWasm.proxy = false;
-    }
+    const ow = env.backends?.onnx?.wasm ?? env.backends?.ort?.wasm;
+    if (ow) { ow.numThreads = 1; ow.proxy = false; }
   } catch (_) {}
 
   setStatus('embed', 'Downloading…');
@@ -715,50 +770,66 @@ async function embed(texts) {
 // Chat templates are applied automatically by Transformers.js (WASM)
 // and by WebLLM (WebGPU) — no manual formatting needed.
 
-// ── WASM backend (Transformers.js / ONNX Runtime Web) ─────────────────────
+// ── WASM backend — Web Worker (non-blocking) ──────────────────────────────
+// The LLM pipeline runs in a dedicated module Worker so WASM execution never
+// blocks the main thread.  Each generated token arrives via postMessage and
+// is yielded to the chat UI one-by-one, giving smooth streaming on all devices.
+
 async function initWASM(model, onProg) {
-  txPipeline = null;
+  // Terminate any previous worker to free its WASM memory before loading a new model
+  if (wasmWorker) { wasmWorker.terminate(); wasmWorker = null; }
+
   setStatus('llm', 'Initialising WASM…');
-  txPipeline = await pipeline('text-generation', model.wasm.modelId, {
-    dtype:  model.wasm.dtype,
-    device: 'wasm',
-    progress_callback: ({ status, progress }) => {
-      if (status === 'progress') onProg(Math.round(progress ?? 0));
-    },
+  wasmWorker = new Worker(_getWasmWorkerUrl(), { type: 'module' });
+
+  return new Promise((resolve, reject) => {
+    wasmWorker.onmessage = ({ data }) => {
+      if      (data.type === 'progress') onProg(data.pct);
+      else if (data.type === 'loaded')   resolve();
+      else if (data.type === 'error')    reject(new Error(data.msg));
+    };
+    wasmWorker.onerror = e => reject(new Error(e.message || 'Worker failed to start'));
+    wasmWorker.postMessage({
+      type:       'load',
+      modelId:    model.wasm.modelId,
+      dtype:      model.wasm.dtype,
+      // Pass thread count so the worker can configure its own ORT env
+      numThreads: isMobile ? 1 : Math.min(4, navigator.hardwareConcurrency || 4),
+    });
   });
 }
 
 async function* streamWASM(messages, model) {
-  if (!txPipeline) throw new Error('WASM model not loaded.');
+  if (!wasmWorker) throw new Error('WASM model not loaded.');
 
-  // Bridge Transformers.js TextStreamer callback → async generator
+  // Queue + notify pattern: worker posts tokens, main thread yields them one-by-one
   const queue = [];
-  let streamDone = false;
+  let done = false, genErr = null;
   let resolveWait = null;
   const notify = () => { if (resolveWait) { resolveWait(); resolveWait = null; } };
 
-  const streamer = new TextStreamer(txPipeline.tokenizer, {
-    skip_prompt:        true,
-    skip_special_tokens: true,
-    callback_function:  text => { queue.push(text); notify(); },
-  });
+  wasmWorker.onmessage = ({ data }) => {
+    if      (data.type === 'token') { queue.push(data.text); notify(); }
+    else if (data.type === 'done')  { done = true; notify(); }
+    else if (data.type === 'error') { genErr = new Error(data.msg); done = true; notify(); }
+  };
 
-  const temp      = model.sampling?.temp ?? 0.7;
-  // Limit output length on mobile: reduces peak RAM and avoids browser tab kills
-  const maxTokens = isMobile ? 512 : 1024;
-  txPipeline(messages, {
-    max_new_tokens: maxTokens,
-    temperature:    temp,
-    top_p:          model.sampling?.top_p ?? 1.0,
-    do_sample:      temp > 0,
-    streamer,
-  }).then(() => { streamDone = true; notify(); });
+  const temp = model.sampling?.temp ?? 0.7;
+  wasmWorker.postMessage({
+    type:     'generate',
+    messages,
+    maxTokens: isMobile ? 512 : 1024,
+    temp,
+    topP:     model.sampling?.top_p ?? 1.0,
+    doSample: temp > 0,
+  });
 
   while (true) {
     if (queue.length > 0)  { yield queue.shift(); }
-    else if (streamDone)   { break; }
+    else if (done)         { break; }
     else { await new Promise(r => { resolveWait = r; }); }
   }
+  if (genErr) throw genErr;
 }
 
 // ── WebGPU backend (WebLLM / MLC) ─────────────────────────────────────────
@@ -1360,11 +1431,10 @@ async function boot() {
 
   // ── Mobile-specific startup configuration ──────────────────────────────
   if (isMobile) {
-    // Default to WASM backend — WebGPU on mobile (especially iOS) is unreliable
-    document.getElementById('backend-select').value = 'wasm';
-
-    // Default to the smallest available model to avoid OOM on first use
-    document.getElementById('llm-select').value = 'smollm2-135m';
+    // Auto backend: uses WebGPU when available (Android Chrome), falls back to WASM (iOS)
+    // Qwen3-0.6B is the smallest Qwen3 with full WebGPU support via WebLLM
+    document.getElementById('backend-select').value = 'auto';
+    document.getElementById('llm-select').value     = 'qwen3-0.6b';
 
     // Annotate model <option> labels with mobile suitability hints
     document.querySelectorAll('#llm-select option[value]').forEach(opt => {
