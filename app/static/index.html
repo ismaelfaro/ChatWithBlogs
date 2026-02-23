@@ -289,6 +289,86 @@
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* ── Mobile navigation ──────────────────────────────────────────────────── */
+    #mobile-nav {
+      display: none;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .mob-tab {
+      flex: 1; padding: 12px 8px; text-align: center;
+      font-size: 0.82rem; font-weight: 600; color: var(--text-muted);
+      cursor: pointer; border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      user-select: none; -webkit-tap-highlight-color: transparent;
+    }
+    .mob-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── Mobile responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 767px) {
+      /* Show tab bar */
+      #mobile-nav { display: flex; }
+
+      /* Compact header */
+      header { padding: 8px 16px; }
+      .header-sub { display: none; }
+      .badge { display: none; }
+
+      /* Sidebar: hidden by default on mobile, shown when Blogs tab active */
+      aside { display: none; width: 100%; border-right: none; flex-shrink: 0; }
+      aside.mob-visible { display: flex; }
+
+      /* Chat area hidden when Blogs tab active */
+      .chat-area.mob-hidden { display: none; }
+
+      /* Full-height content */
+      main { overflow: hidden; }
+
+      /* Larger touch targets */
+      .btn           { min-height: 44px; padding: 10px 18px; }
+      .btn-sm        { min-height: 36px; padding: 6px 14px; }
+      .btn-danger    { min-height: 34px; }
+      .blog-item     { padding: 14px 16px; min-height: 60px; }
+
+      /* Prevent iOS input zoom — all inputs must be ≥ 16px */
+      #message-input  { font-size: 16px; }
+      .field-url      { font-size: 16px; }
+      .author-select  { font-size: 16px; }
+      .llm-select     { font-size: 14px; max-width: 130px; }
+
+      /* Wider chat bubbles on small screens */
+      .bubble { max-width: 90%; font-size: 0.85rem; }
+
+      /* Comfortable message spacing */
+      #messages { padding: 14px 12px; gap: 12px; }
+      .input-row {
+        padding: 10px 12px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      }
+
+      /* Model bar: compact, safe-area-aware */
+      #model-bar {
+        padding: 6px 12px;
+        padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+        gap: 5px 10px;
+      }
+      .mb-sep    { display: none; }
+      #llm-bar   { width: 80px; }
+      #backend-badge { margin-left: 0; font-size: 0.6rem; }
+
+      /* Toast above model bar with safe area */
+      #toast {
+        bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+        left: 12px; right: 12px; transform: none; text-align: center;
+      }
+
+      /* Auto-run card fits narrow screens */
+      .ar-card { min-width: auto; width: calc(100% - 32px); padding: 24px 20px; }
+
+      /* Tap feedback */
+      .blog-item, .btn { -webkit-tap-highlight-color: transparent; }
+    }
   </style>
 </head>
 <body>
@@ -300,6 +380,12 @@
     <div class="header-sub">AI runs in your browser via WebAssembly or WebGPU — nothing leaves your machine</div>
   </div>
 </header>
+
+<!-- ── Mobile tab bar (hidden on desktop) ────────────────────────────────── -->
+<div id="mobile-nav">
+  <div class="mob-tab" id="mob-tab-blogs">📚 Blogs</div>
+  <div class="mob-tab active" id="mob-tab-chat">💬 Chat</div>
+</div>
 
 <!-- ── Main ──────────────────────────────────────────────────────────────── -->
 <main>
@@ -365,6 +451,10 @@
         <option value="smollm2-360m">SmolLM2 360M (~210 MB) · WASM</option>
         <option value="smollm2-1.7b">SmolLM2 1.7B (~1 GB) · WASM</option>
         <option value="gemma3-270m">Gemma 3 270M (~260 MB) · WASM</option>
+        <option value="lfm2-350m">LFM2 350M (~220 MB) · WASM</option>
+        <option value="lfm2-1.2b">LFM2 1.2B (~750 MB) · WASM</option>
+        <option value="granite4-350m">Granite 4.0 350M (~350 MB) · WASM</option>
+        <option value="granite4-1b">Granite 4.0 1B (~700 MB) · WASM</option>
       </optgroup>
     </select>
     <button class="btn btn-sm btn-primary" id="load-llm-btn">Load</button>
@@ -398,8 +488,8 @@
 <script type="module">
 
 // ── Imports ────────────────────────────────────────────────────────────────
-// Transformers.js v3 — embeddings + WASM LLM inference via ONNX Runtime Web
-import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/dist/transformers.js';
+// Transformers.js v4 — embeddings + WASM LLM inference via ONNX Runtime Web
+import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.0.0-next.4/dist/transformers.web.js';
 import { marked }     from 'https://cdn.jsdelivr.net/npm/marked@15/+esm';
 import DOMPurify      from 'https://cdn.jsdelivr.net/npm/dompurify@3/+esm';
 
@@ -442,6 +532,22 @@ const MODEL_LIST = [
   { id:'gemma3-270m',   label:'Gemma 3 270M',          size:'~260 MB',
     sampling:{temp:1.0,top_p:0.9},
     wasm: {modelId:'onnx-community/gemma-3-270m-it-ONNX', dtype:'fp32'} },
+
+  { id:'lfm2-350m',     label:'LFM2 350M',             size:'~220 MB',
+    sampling:{temp:0.7,top_p:0.9},
+    wasm: {modelId:'onnx-community/LFM2-350M-ONNX', dtype:'q4'} },
+
+  { id:'lfm2-1.2b',     label:'LFM2 1.2B',             size:'~750 MB',
+    sampling:{temp:0.7,top_p:0.9},
+    wasm: {modelId:'onnx-community/LFM2-1.2B-ONNX', dtype:'q4'} },
+
+  { id:'granite4-350m', label:'Granite 4.0 350M',      size:'~350 MB',
+    sampling:{temp:0.7,top_p:0.9},
+    wasm: {modelId:'onnx-community/granite-4.0-350m-ONNX-web', dtype:'q4'} },
+
+  { id:'granite4-1b',   label:'Granite 4.0 1B',        size:'~700 MB',
+    sampling:{temp:0.7,top_p:0.9},
+    wasm: {modelId:'onnx-community/granite-4.0-1b-ONNX-web', dtype:'q4'} },
 ];
 
 const MODEL_MAP = Object.fromEntries(MODEL_LIST.map(m => [m.id, m]));
@@ -886,6 +992,27 @@ function setIngestProg(ratio, msg) {
   document.getElementById('ingest-msg').textContent = msg;
 }
 
+// ── Mobile tab switching ──────────────────────────────────────────────────
+function mobSwitchTo(tab) {
+  const isMobile = window.matchMedia('(max-width: 767px)').matches;
+  if (!isMobile) return;
+  const aside    = document.querySelector('aside');
+  const chat     = document.getElementById('chat-area');
+  const tabChat  = document.getElementById('mob-tab-chat');
+  const tabBlogs = document.getElementById('mob-tab-blogs');
+  if (tab === 'blogs') {
+    aside.classList.add('mob-visible');
+    chat.classList.add('mob-hidden');
+    tabBlogs.classList.add('active');
+    tabChat.classList.remove('active');
+  } else {
+    aside.classList.remove('mob-visible');
+    chat.classList.remove('mob-hidden');
+    tabChat.classList.add('active');
+    tabBlogs.classList.remove('active');
+  }
+}
+
 // ── Blog list ─────────────────────────────────────────────────────────────
 async function renderBlogList() {
   const blogs = await dbAll('blogs');
@@ -927,6 +1054,7 @@ function selectBlog(b) {
   });
   sec.style.display = b.authors.length > 1 ? '' : 'none';
   buildChatUI(b);
+  mobSwitchTo('chat');
 }
 
 function resetChat() {
@@ -1175,6 +1303,10 @@ async function boot() {
     if (e.key === 'Enter') handleIngest();
   });
   document.getElementById('author-select').addEventListener('change', () => { history = []; });
+
+  // Mobile tab navigation
+  document.getElementById('mob-tab-blogs').addEventListener('click', () => mobSwitchTo('blogs'));
+  document.getElementById('mob-tab-chat').addEventListener('click',  () => mobSwitchTo('chat'));
 
   // Auto-run when ?url= is present in the query string
   const autoUrl = new URLSearchParams(window.location.search).get('url');

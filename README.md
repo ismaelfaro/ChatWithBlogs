@@ -3,7 +3,7 @@
 > All AI runs inside the browser — no Ollama, no Python vector store, no GPU server needed.
 
 Turn any blog/url into a conversational experience.
-Embeddings and LLM inference happen entirely in your browser via **Transformers.js v3 / ONNX Runtime Web**. The Python server only proxies external URLs to bypass CORS (not needed when using the GitHub Pages hosted version).
+Embeddings and LLM inference happen entirely in your browser via **Transformers.js v4 / ONNX Runtime Web**. The Python server only proxies external URLs to bypass CORS (not needed when using the GitHub Pages hosted version).
 
 ## Run now
 
@@ -25,14 +25,14 @@ Blog URL
    ▼  (browser — Readability.js)
  Extract article text
    │
-   ▼  (browser — Transformers.js v3 · all-MiniLM-L6-v2 · ONNX)
+   ▼  (browser — Transformers.js v4 · all-MiniLM-L6-v2 · ONNX)
  Chunk + embed  →  IndexedDB (persisted locally)
    │
  Chat query
    ├─ Embed query  ──► cosine similarity  ──► top-K chunks
    └─ Build prompt ("You are a digital twin of …")
               │
-              ▼  (browser — Transformers.js v3 WASM  or  WebLLM WebGPU)
+              ▼  (browser — Transformers.js v4 WASM  or  WebLLM WebGPU)
            LLM response (streamed token by token, thinking blocks collapsed)
 ```
 
@@ -103,9 +103,14 @@ This is useful for sharing a direct link that drops someone straight into a conv
 | Qwen3-0.6B | ~350 MB | WASM + WebGPU | Default · Alibaba Qwen3, thinking mode |
 | Qwen3-1.7B | ~950 MB | WASM + WebGPU | Larger Qwen3, better quality |
 | Gemma 2 2B | 1.71 GB | WebGPU only | Google, solid reasoning |
-| LFM2.5-1.2B Instruct | ~700 MB | WASM | Liquid AI, fast RAG |
-| LFM2.5-1.2B Thinking | ~700 MB | WASM | Liquid AI, reasoning variant |
-| Gemma 3 270M | ~260 MB | WASM | Tiny, surprisingly capable |
+| SmolLM2 135M | ~90 MB | WASM | Tiny, very fast |
+| SmolLM2 360M | ~210 MB | WASM | Good balance of size and quality |
+| SmolLM2 1.7B | ~1 GB | WASM | HuggingFace SmolLM2, solid quality |
+| Gemma 3 270M | ~260 MB | WASM | Google Gemma 3, surprisingly capable |
+| LFM2 350M | ~220 MB | WASM | Liquid AI, edge-optimised hybrid |
+| LFM2 1.2B | ~750 MB | WASM | Liquid AI, fast RAG-friendly |
+| Granite 4.0 350M | ~350 MB | WASM | IBM Granite 4.0 compact |
+| Granite 4.0 1B | ~700 MB | WASM | IBM Granite 4.0 base |
 
 Models with **WASM + WebGPU** use WebGPU automatically when available (Chrome/Edge), falling back to WASM otherwise. Switch manually with the backend selector in the toolbar.
 
