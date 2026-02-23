@@ -3,624 +3,1124 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ChatMyIdeas — Blog Digital Twin</title>
+  <title>ChatWithBlogs</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #22263a;
-      --border: #2e3352;
-      --accent: #6c8ef7;
+      --bg:          #0f1117;
+      --surface:     #1a1d27;
+      --surface2:    #22263a;
+      --border:      #2e3352;
+      --accent:      #6c8ef7;
       --accent-dark: #4a6cf7;
-      --text: #e2e8f0;
-      --text-muted: #8892b0;
+      --text:        #e2e8f0;
+      --text-muted:  #8892b0;
       --user-bubble: #2d3a6e;
-      --bot-bubble: #1e2438;
-      --error: #f87171;
-      --success: #4ade80;
-      --radius: 12px;
-      --radius-sm: 8px;
+      --bot-bubble:  #1e2438;
+      --error:       #f87171;
+      --success:     #4ade80;
+      --warn:        #fbbf24;
+      --radius:      12px;
+      --radius-sm:   8px;
     }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      background: var(--bg); color: var(--text);
+      height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
     }
 
-    /* ── Header ──────────────────────────────────────────────────────────── */
+    /* ── Model bar ─────────────────────────────────────────────────────────── */
+    #model-bar {
+      background: #0a0d14; border-bottom: 1px solid var(--border);
+      padding: 6px 20px; display: flex; align-items: center; gap: 16px;
+      flex-shrink: 0; font-size: 0.75rem; flex-wrap: wrap;
+    }
+    .mb-item { display: flex; align-items: center; gap: 7px; }
+    .mb-label { color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; font-size: 0.65rem; }
+    .mb-sep   { width: 1px; height: 18px; background: var(--border); }
+    .mb-status { font-size: 0.72rem; }
+    .mb-status.ok   { color: var(--success); }
+    .mb-status.warn { color: var(--warn); }
+    .mb-status.err  { color: var(--error); }
+    .llm-select {
+      padding: 3px 7px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text); font-size: 0.72rem; outline: none;
+    }
+    .llm-select:focus { border-color: var(--accent); }
+    #llm-prog-wrap { display: none; align-items: center; gap: 6px; }
+    #llm-bar { width: 110px; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    #llm-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+    #llm-pct { font-size: 0.68rem; color: var(--text-muted); min-width: 28px; }
+    #backend-badge {
+      margin-left: auto; font-size: 0.65rem; padding: 2px 8px; border-radius: 99px;
+      border: 1px solid var(--success); color: var(--success); background: var(--surface2);
+      transition: color 0.3s, border-color 0.3s;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────────── */
     header {
-      padding: 12px 24px;
-      background: var(--surface);
+      padding: 10px 24px; background: var(--surface);
       border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
+      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
     }
-    .logo { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.5px; }
+    .logo { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.5px; }
     .logo span { color: var(--accent); }
-    .header-sub { font-size: 0.75rem; color: var(--text-muted); }
-    .status-pill {
-      margin-left: auto;
-      padding: 3px 10px;
-      border-radius: 99px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      background: var(--surface2);
-      color: var(--text-muted);
-      border: 1px solid var(--border);
-      display: flex; align-items: center; gap: 5px;
+    .badge {
+      display: inline-block; padding: 1px 7px; border-radius: 99px;
+      font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+      background: var(--accent-dark); color: #fff; margin-left: 6px; vertical-align: middle;
     }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
-    .status-dot.ok { background: var(--success); }
+    .header-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
 
-    /* ── Main layout ──────────────────────────────────────────────────────── */
-    main {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
+    /* ── Layout ──────────────────────────────────────────────────────────────── */
+    main { flex: 1; display: flex; overflow: hidden; }
 
-    /* ── Sidebar ─────────────────────────────────────────────────────────── */
     aside {
-      width: 300px;
-      background: var(--surface);
+      width: 300px; background: var(--surface);
       border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      flex-shrink: 0;
+      display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
     }
-    .sidebar-section {
-      padding: 16px;
-      border-bottom: 1px solid var(--border);
-    }
+    .sidebar-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
     .sidebar-section h3 {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
-      margin-bottom: 10px;
+      font-size: 0.65rem; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px;
     }
-
-    /* Ingest form */
-    .ingest-url {
-      width: 100%;
-      padding: 8px 10px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 0.85rem;
-      outline: none;
+    .field-url {
+      width: 100%; padding: 8px 10px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 0.82rem; outline: none; margin-bottom: 6px;
       transition: border-color 0.2s;
-      margin-bottom: 6px;
     }
-    .ingest-url:focus { border-color: var(--accent); }
-    .ingest-url::placeholder { color: var(--text-muted); }
+    .field-url:focus { border-color: var(--accent); }
+    .field-url::placeholder { color: var(--text-muted); }
+    .author-select {
+      width: 100%; padding: 7px 10px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 0.82rem; outline: none;
+    }
+    .author-select:focus { border-color: var(--accent); }
 
     .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-      padding: 7px 14px;
-      border-radius: var(--radius-sm);
-      border: none;
-      cursor: pointer;
-      font-size: 0.82rem;
-      font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      padding: 7px 14px; border-radius: var(--radius-sm); border: none;
+      cursor: pointer; font-size: 0.82rem; font-weight: 600;
       transition: opacity 0.15s, transform 0.1s;
     }
-    .btn:hover:not(:disabled) { opacity: 0.9; }
+    .btn:hover:not(:disabled) { opacity: 0.88; }
     .btn:active:not(:disabled) { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn:disabled { opacity: 0.38; cursor: not-allowed; }
     .btn-primary { background: var(--accent); color: #fff; }
-    #ingest-btn  { width: 100%; }
-    .btn-danger  { background: #7f1d1d; color: #fca5a5; padding: 4px 8px; font-size: 0.75rem; }
-    .btn-ghost   { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-full    { width: 100%; }
+    .btn-sm      { padding: 3px 10px; font-size: 0.72rem; }
+    .btn-danger  { background: #7f1d1d; color: #fca5a5; padding: 4px 8px; font-size: 0.72rem; }
 
-    /* Blog list */
+    #ingest-prog { display: none; margin-top: 8px; }
+    .prog-bar { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .prog-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.4s; }
+    #ingest-msg { font-size: 0.68rem; color: var(--text-muted); margin-top: 4px; text-align: center; }
+
     .blog-list { flex: 1; overflow-y: auto; }
     .blog-item {
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      transition: background 0.15s;
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.15s;
       display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;
     }
     .blog-item:hover { background: var(--surface2); }
     .blog-item.active { background: var(--surface2); border-left: 3px solid var(--accent); padding-left: 13px; }
-    .blog-meta { min-width: 0; }
-    .blog-item-title { font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .blog-item-sub { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
-    .blog-item-authors { font-size: 0.68rem; color: var(--accent); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .blog-meta { min-width: 0; flex: 1; }
+    .blog-title { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .blog-sub   { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
+    .blog-auth  { font-size: 0.66rem; color: var(--accent); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Author select */
-    .author-select {
-      width: 100%;
-      padding: 7px 10px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 0.82rem;
-      outline: none;
-    }
-    .author-select:focus { border-color: var(--accent); }
-
-    /* ── Chat area ───────────────────────────────────────────────────────── */
-    .chat-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    /* Empty state */
+    /* ── Chat ────────────────────────────────────────────────────────────────── */
+    .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .empty-state {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 14px;
-      color: var(--text-muted);
-      text-align: center;
-      padding: 40px;
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; color: var(--text-muted); text-align: center; padding: 40px;
     }
     .empty-icon { font-size: 3rem; }
-    .empty-state h2 { font-size: 1.2rem; color: var(--text); }
-    .empty-state p  { font-size: 0.85rem; max-width: 360px; line-height: 1.6; }
+    .empty-state h2 { font-size: 1.15rem; color: var(--text); }
+    .empty-state p  { font-size: 0.82rem; max-width: 380px; line-height: 1.6; }
 
-    /* Messages */
     #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+      flex: 1; overflow-y: auto; padding: 20px 24px;
+      display: flex; flex-direction: column; gap: 16px;
     }
-    .message { display: flex; gap: 10px; align-items: flex-start; max-width: 100%; }
-    .message.user  { flex-direction: row-reverse; }
+    .message { display: flex; gap: 10px; align-items: flex-start; }
+    .message.user { flex-direction: row-reverse; }
     .avatar {
-      width: 32px; height: 32px; border-radius: 50%;
+      width: 30px; height: 30px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 0.9rem; flex-shrink: 0;
+      font-size: 0.85rem; flex-shrink: 0;
     }
-    .message.user  .avatar { background: var(--accent-dark); }
-    .message.bot   .avatar { background: var(--surface2); border: 1px solid var(--border); }
+    .message.user .avatar { background: var(--accent-dark); }
+    .message.bot  .avatar { background: var(--surface2); border: 1px solid var(--border); }
     .bubble {
-      max-width: 75%;
-      padding: 10px 14px;
+      max-width: 78%; padding: 10px 14px; font-size: 0.86rem;
+      line-height: 1.65; white-space: pre-wrap; word-break: break-word;
       border-radius: var(--radius);
-      font-size: 0.88rem;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-break: break-word;
     }
     .message.user .bubble { background: var(--user-bubble); border-radius: var(--radius) 4px var(--radius) var(--radius); }
-    .message.bot  .bubble { background: var(--bot-bubble); border-radius: 4px var(--radius) var(--radius) var(--radius); border: 1px solid var(--border); }
-    .sources {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid var(--border);
-      font-size: 0.72rem;
-      color: var(--text-muted);
-    }
+    .message.bot  .bubble { background: var(--bot-bubble); border: 1px solid var(--border); border-radius: 4px var(--radius) var(--radius) var(--radius); }
+    .sources { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 0.7rem; color: var(--text-muted); }
     .sources a { color: var(--accent); text-decoration: none; margin-left: 4px; }
     .sources a:hover { text-decoration: underline; }
 
-    /* Typing indicator */
-    .typing .bubble { padding: 12px 16px; }
+    .typing .bubble { padding: 14px 16px; }
     .typing-dots { display: flex; gap: 4px; align-items: center; }
-    .typing-dots span {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--text-muted);
-      animation: bounce 1.2s infinite;
-    }
+    .typing-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); animation: bounce 1.2s infinite; }
     .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
     .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes bounce {
-      0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
-      40% { transform: scale(1); opacity: 1; }
+    @keyframes bounce { 0%,80%,100%{transform:scale(0.7);opacity:0.5} 40%{transform:scale(1);opacity:1} }
+    @keyframes spin   { to { transform: rotate(360deg); } }
+    .llm-spinner {
+      display: inline-block; width: 13px; height: 13px; vertical-align: middle;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.75s linear infinite;
+    }
+    .think-block {
+      margin-bottom: 8px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); overflow: hidden; font-size: 0.78rem;
+    }
+    .think-block summary {
+      padding: 4px 8px; cursor: pointer; color: var(--text-muted);
+      background: var(--surface2); user-select: none; list-style: none;
+    }
+    .think-block summary::-webkit-details-marker { display: none; }
+    .think-content {
+      padding: 8px; color: var(--text-muted); white-space: pre-wrap;
+      font-size: 0.75rem; font-style: italic;
+      max-height: 200px; overflow-y: auto; border-top: 1px solid var(--border);
     }
 
-    /* Progress bar */
-    .progress-bar-wrap { padding: 0 16px 10px; }
-    .progress-bar {
-      height: 3px; background: var(--border); border-radius: 99px; overflow: hidden;
-    }
-    .progress-bar-fill {
-      height: 100%; background: var(--accent);
-      animation: indeterminate 1.5s infinite;
-    }
-    @keyframes indeterminate {
-      0%   { transform: translateX(-100%); width: 50%; }
-      100% { transform: translateX(250%);  width: 50%; }
-    }
-
-    /* Input row */
     .input-row {
-      display: flex;
-      gap: 8px;
-      padding: 12px 24px 16px;
-      border-top: 1px solid var(--border);
-      background: var(--surface);
-      flex-shrink: 0;
+      display: flex; gap: 8px; padding: 12px 24px 16px;
+      border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0;
     }
     #message-input {
-      flex: 1;
-      resize: none;
-      min-height: 42px;
-      max-height: 120px;
-      padding: 10px 14px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 0.88rem;
-      line-height: 1.5;
-      outline: none;
-      font-family: inherit;
-      transition: border-color 0.2s;
+      flex: 1; resize: none; min-height: 42px; max-height: 120px;
+      padding: 10px 14px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 0.86rem; line-height: 1.5;
+      outline: none; font-family: inherit; transition: border-color 0.2s;
     }
     #message-input:focus { border-color: var(--accent); }
     #message-input::placeholder { color: var(--text-muted); }
     #message-input:disabled { opacity: 0.5; }
     #send-btn { padding: 10px 14px; font-size: 1rem; align-self: flex-end; flex-shrink: 0; width: auto; }
 
-    /* Toast */
     #toast {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      padding: 10px 20px; border-radius: var(--radius);
-      font-size: 0.82rem; font-weight: 600;
+      padding: 10px 20px; border-radius: var(--radius); font-size: 0.8rem; font-weight: 600;
       background: var(--surface2); border: 1px solid var(--border);
       opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999;
     }
     #toast.show { opacity: 1; }
-    #toast.error { border-color: var(--error); color: var(--error); }
+    #toast.error   { border-color: var(--error);  color: var(--error); }
     #toast.success { border-color: var(--success); color: var(--success); }
 
-    /* Scrollbar */
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
   </style>
 </head>
 <body>
 
+<!-- ── Model bar ──────────────────────────────────────────────────────────── -->
+<div id="model-bar">
+  <div class="mb-item">
+    <span class="mb-label">Embedder</span>
+    <span class="mb-status" id="embed-status">starting…</span>
+  </div>
+  <div class="mb-sep"></div>
+  <div class="mb-item">
+    <span class="mb-label">Backend</span>
+    <select class="llm-select" id="backend-select">
+      <option value="auto">Auto (WebGPU if available)</option>
+      <option value="wasm">WebAssembly (all browsers)</option>
+      <option value="webgpu">WebGPU (Chrome / Edge)</option>
+    </select>
+  </div>
+  <div class="mb-sep"></div>
+  <div class="mb-item">
+    <span class="mb-label">Model</span>
+    <select class="llm-select" id="llm-select">
+      <optgroup label="── WebGPU + WASM ──">
+        <option value="qwen3-0.6b" selected>Qwen3-0.6B (~350 MB) · WASM+GPU</option>
+        <option value="qwen3-1.7b">Qwen3-1.7B (~950 MB) · WASM+GPU</option>
+        <option value="gemma2-2b">Gemma 2 2B (1.71 GB) · GPU only</option>
+      </optgroup>
+      <optgroup label="── WASM only ──">
+        <option value="lfm2.5-1.2b">LFM2.5-1.2B Instruct (~700 MB) · WASM</option>
+        <option value="lfm2.5-1.2b-thinking">LFM2.5-1.2B Thinking (~700 MB) · WASM</option>
+        <option value="gemma3-270m">Gemma 3 270M (~260 MB) · WASM</option>
+      </optgroup>
+    </select>
+    <button class="btn btn-sm btn-primary" id="load-llm-btn">Load</button>
+    <div id="llm-prog-wrap">
+      <div id="llm-bar"><div id="llm-bar-fill"></div></div>
+      <span id="llm-pct">0%</span>
+    </div>
+    <span class="mb-status" id="llm-status">not loaded</span>
+  </div>
+  <span id="backend-badge">⚙ WebAssembly · all browsers</span>
+</div>
+
+<!-- ── Header ────────────────────────────────────────────────────────────── -->
 <header>
   <div>
-    <div class="logo">Chat<span>MyIdeas</span></div>
-    <div class="header-sub">Blog Digital Twin</div>
-  </div>
-  <div class="status-pill" id="status-pill">
-    <div class="status-dot" id="status-dot"></div>
-    <span id="status-text">checking…</span>
+    <div class="logo">Chat<span>WithBlogs</span> <span class="badge">Browser Local</span></div>
+    <div class="header-sub">AI runs in your browser via WebAssembly or WebGPU — nothing leaves your machine</div>
   </div>
 </header>
 
+<!-- ── Main ──────────────────────────────────────────────────────────────── -->
 <main>
-  <!-- Sidebar -->
   <aside>
-    <!-- Ingest section -->
     <div class="sidebar-section">
       <h3>Add Blog</h3>
-      <input class="ingest-url" id="blog-url-input" type="url"
+      <input class="field-url" id="blog-url-input" type="url"
              placeholder="https://example.com/blog" autocomplete="off" />
-      <button class="btn btn-primary" id="ingest-btn">⚡ Create Twin</button>
-      <div id="ingest-progress" style="display:none; margin-top:8px;">
-        <div class="progress-bar"><div class="progress-bar-fill"></div></div>
-        <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;text-align:center;">Ingesting articles…</div>
+      <button class="btn btn-primary btn-full" id="ingest-btn">⚡ Create Twin</button>
+      <div id="ingest-prog">
+        <div class="prog-bar"><div class="prog-fill" id="ingest-bar"></div></div>
+        <div id="ingest-msg">Fetching…</div>
       </div>
     </div>
 
-    <!-- Author filter -->
-    <div class="sidebar-section" id="author-section" style="display:none;">
+    <div class="sidebar-section" id="author-section" style="display:none">
       <h3>Author</h3>
       <select class="author-select" id="author-select">
         <option value="">All authors</option>
       </select>
     </div>
 
-    <!-- Blog list -->
     <div class="blog-list" id="blog-list"></div>
   </aside>
 
-  <!-- Chat area -->
   <div class="chat-area" id="chat-area">
     <div class="empty-state" id="empty-state">
       <div class="empty-icon">🧠</div>
-      <h2>Start chatting with a digital twin</h2>
-      <p>Paste a blog URL in the sidebar and click <strong>Create Twin</strong>.
-         ChatMyIdeas will read all articles and let you have a conversation with the author's ideas.</p>
+      <h2>Chat with a blog's ideas — fully local</h2>
+      <p>1. Pick a <strong>backend</strong> and <strong>model</strong> in the toolbar, then click <strong>Load</strong>.<br>
+         2. Paste a blog URL and click <strong>Create Twin</strong>.<br>
+         3. Chat — everything runs in your browser via WASM or WebGPU.</p>
     </div>
-    <!-- Messages will be injected here by JS -->
   </div>
 </main>
 
 <div id="toast"></div>
 
-<script>
-const API = '/api/v1';
+<!-- ── Application ───────────────────────────────────────────────────────── -->
+<script type="module">
+
+// ── Imports ────────────────────────────────────────────────────────────────
+// Transformers.js v3 — embeddings + WASM LLM inference via ONNX Runtime Web
+import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/dist/transformers.js';
+
+// ── Model registry ─────────────────────────────────────────────────────────
+//   wasm:   { modelId, dtype }       — ONNX via Transformers.js (all browsers)
+//   webgpu: { mlcId }                — MLC-quantised via WebLLM (Chrome/Edge)
+//   sampling: { temp, top_p? }
+
+const MODEL_LIST = [
+  // ── WebGPU + WASM (Transformers.js ONNX) ──────────────────────────────
+  { id:'qwen3-0.6b',    label:'Qwen3-0.6B',          size:'~350 MB',
+    sampling:{temp:0.7,top_p:0.8},
+    wasm:  {modelId:'onnx-community/Qwen3-0.6B-ONNX',  dtype:'q4f16'},
+    webgpu:{mlcId:'Qwen3-0.6B-q4f16_1-MLC'} },
+
+  { id:'qwen3-1.7b',    label:'Qwen3-1.7B',          size:'~950 MB',
+    sampling:{temp:0.7,top_p:0.8},
+    wasm:  {modelId:'onnx-community/Qwen3-1.7B-ONNX',  dtype:'q4f16'},
+    webgpu:{mlcId:'Qwen3-1.7B-q4f16_1-MLC'} },
+
+  { id:'gemma2-2b',     label:'Gemma 2 2B',          size:'1.71 GB',
+    sampling:{temp:1.0,top_p:0.9},
+    webgpu:{mlcId:'gemma-2-2b-it-q4f16_1-MLC'} },
+
+  // ── WASM only (Transformers.js ONNX) ──────────────────────────────────
+  { id:'lfm2.5-1.2b',   label:'LFM2.5-1.2B Instruct', size:'~700 MB',
+    sampling:{temp:0.7,top_p:0.9},
+    wasm: {modelId:'LiquidAI/LFM2.5-1.2B-Instruct-ONNX', dtype:'q4'} },
+
+  { id:'lfm2.5-1.2b-thinking', label:'LFM2.5-1.2B Thinking', size:'~700 MB',
+    sampling:{temp:0.7,top_p:0.9},
+    wasm: {modelId:'LiquidAI/LFM2.5-1.2B-Thinking-ONNX',  dtype:'q4'} },
+
+  { id:'gemma3-270m',   label:'Gemma 3 270M',         size:'~260 MB',
+    sampling:{temp:1.0,top_p:0.9},
+    wasm: {modelId:'onnx-community/gemma-3-270m-it-ONNX', dtype:'fp32'} },
+];
+
+const MODEL_MAP = Object.fromEntries(MODEL_LIST.map(m => [m.id, m]));
+
+// ── Constants ──────────────────────────────────────────────────────────────
+const EMBED_MODEL   = 'Xenova/all-MiniLM-L6-v2';
+const CHUNK_WORDS   = 200;
+const CHUNK_OVERLAP = 30;
+const TOP_K         = 5;
+const MAX_HISTORY   = 10;
+const MAX_ARTICLES  = 60;
+
+// WebGPU availability (checked once at startup)
+const hasWebGPU = !!(typeof navigator !== 'undefined' && navigator.gpu);
+
+// ── Global state ───────────────────────────────────────────────────────────
+let embedder     = null;   // Transformers.js pipeline (embeddings)
+let txPipeline   = null;   // Transformers.js pipeline (LLM, WASM)
+let webllmEngine = null;   // WebLLM MLCEngine
+let webllmLib    = null;   // WebLLM module (lazy-loaded on first GPU use)
+let activeModel  = null;   // currently loaded MODEL_LIST entry
+let activeBackend= null;   // 'wasm' | 'webgpu'
+let db           = null;
 let activeBlogId = null;
-let history = [];
+let history      = [];
+const memChunks  = new Map();  // blogId → chunk[]
+let _triggerSend = null;   // set by buildChatUI; called by autoRun
 
-// ── DOM refs ──────────────────────────────────────────────────────────────────
-const blogUrlInput = document.getElementById('blog-url-input');
-const ingestBtn    = document.getElementById('ingest-btn');
-const ingestProg   = document.getElementById('ingest-progress');
-const blogList     = document.getElementById('blog-list');
-const chatArea     = document.getElementById('chat-area');
-const emptyState   = document.getElementById('empty-state');
-const authorSec    = document.getElementById('author-section');
-const authorSel    = document.getElementById('author-select');
-const statusPill   = document.getElementById('status-pill');
-const statusDot    = document.getElementById('status-dot');
-const statusText   = document.getElementById('status-text');
+// ── IndexedDB ──────────────────────────────────────────────────────────────
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open('chatmyideas_v1', 1);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('blogs'))
+        d.createObjectStore('blogs', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('chunks')) {
+        const s = d.createObjectStore('chunks', { keyPath: 'id' });
+        s.createIndex('blogId', 'blogId', { unique: false });
+      }
+    };
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
 
-// ── Health check ──────────────────────────────────────────────────────────────
-async function checkHealth() {
-  try {
-    const r = await fetch(`${API}/health`);
-    const d = await r.json();
-    if (d.ollama_available) {
-      statusDot.className = 'status-dot ok';
-      statusText.textContent = `Ollama · ${d.model}`;
-    } else {
-      statusDot.className = 'status-dot';
-      statusText.textContent = `Ollama offline`;
-    }
-  } catch {
-    statusDot.className = 'status-dot';
-    statusText.textContent = 'API offline';
+const dbPut    = (store, obj) => new Promise((res, rej) => {
+  const req = db.transaction(store, 'readwrite').objectStore(store).put(obj);
+  req.onsuccess = () => res(); req.onerror = () => rej(req.error);
+});
+const dbAll    = store => new Promise((res, rej) => {
+  const req = db.transaction(store, 'readonly').objectStore(store).getAll();
+  req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
+});
+const dbDel    = (store, key) => new Promise((res, rej) => {
+  const req = db.transaction(store, 'readwrite').objectStore(store).delete(key);
+  req.onsuccess = () => res(); req.onerror = () => rej(req.error);
+});
+const dbByIdx  = (store, idx, val) => new Promise((res, rej) => {
+  const req = db.transaction(store, 'readonly').objectStore(store).index(idx).getAll(val);
+  req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
+});
+const dbDelIdx = (store, idx, val) => new Promise((res, rej) => {
+  const t = db.transaction(store, 'readonly');
+  const kr = t.objectStore(store).index(idx).getAllKeys(val);
+  kr.onsuccess = () => {
+    const t2 = db.transaction(store, 'readwrite'); const s2 = t2.objectStore(store);
+    kr.result.forEach(k => s2.delete(k));
+    t2.oncomplete = res; t2.onerror = () => rej(t2.error);
+  };
+  kr.onerror = () => rej(kr.error);
+});
+
+// ── Embedder (Transformers.js / ONNX) ──────────────────────────────────────
+async function initEmbedder() {
+  env.allowLocalModels = false;
+  env.useBrowserCache  = true;
+  setStatus('embed', 'Downloading…');
+  embedder = await pipeline('feature-extraction', EMBED_MODEL, {
+    progress_callback: ({ status, progress, file }) => {
+      if (status === 'progress')
+        setStatus('embed', `${(file || '').split('/').pop()} ${Math.round(progress)}%`);
+    },
+  });
+  setStatus('embed', 'Ready', 'ok');
+}
+
+async function embed(texts) {
+  if (!embedder) throw new Error('Embedder still loading — please wait.');
+  const out = await embedder(texts, { pooling: 'mean', normalize: true });
+  const dim = out.dims[1];
+  return texts.map((_, i) => Array.from(out.data.slice(i * dim, (i + 1) * dim)));
+}
+
+// Chat templates are applied automatically by Transformers.js (WASM)
+// and by WebLLM (WebGPU) — no manual formatting needed.
+
+// ── WASM backend (Transformers.js / ONNX Runtime Web) ─────────────────────
+async function initWASM(model, onProg) {
+  txPipeline = null;
+  setStatus('llm', 'Initialising WASM…');
+  txPipeline = await pipeline('text-generation', model.wasm.modelId, {
+    dtype:  model.wasm.dtype,
+    device: 'wasm',
+    progress_callback: ({ status, progress }) => {
+      if (status === 'progress') onProg(Math.round(progress ?? 0));
+    },
+  });
+}
+
+async function* streamWASM(messages, model) {
+  if (!txPipeline) throw new Error('WASM model not loaded.');
+
+  // Bridge Transformers.js TextStreamer callback → async generator
+  const queue = [];
+  let streamDone = false;
+  let resolveWait = null;
+  const notify = () => { if (resolveWait) { resolveWait(); resolveWait = null; } };
+
+  const streamer = new TextStreamer(txPipeline.tokenizer, {
+    skip_prompt:        true,
+    skip_special_tokens: true,
+    callback_function:  text => { queue.push(text); notify(); },
+  });
+
+  const temp = model.sampling?.temp ?? 0.7;
+  txPipeline(messages, {
+    max_new_tokens: 1024,
+    temperature:    temp,
+    top_p:          model.sampling?.top_p ?? 1.0,
+    do_sample:      temp > 0,
+    streamer,
+  }).then(() => { streamDone = true; notify(); });
+
+  while (true) {
+    if (queue.length > 0)  { yield queue.shift(); }
+    else if (streamDone)   { break; }
+    else { await new Promise(r => { resolveWait = r; }); }
   }
 }
 
-// ── Blog list ─────────────────────────────────────────────────────────────────
-async function loadBlogs() {
-  try {
-    const r = await fetch(`${API}/blogs`);
-    const blogs = await r.json();
-    blogList.innerHTML = '';
-    blogs.forEach(b => {
-      const el = document.createElement('div');
-      el.className = 'blog-item' + (b.id === activeBlogId ? ' active' : '');
-      el.dataset.id = b.id;
-      el.innerHTML = `
-        <div class="blog-meta" style="min-width:0;flex:1;">
-          <div class="blog-item-title" title="${esc(b.title)}">${esc(b.title)}</div>
-          <div class="blog-item-sub">${b.article_count} articles</div>
-          ${b.authors.length ? `<div class="blog-item-authors">✍ ${esc(b.authors.join(', '))}</div>` : ''}
-        </div>
-        <button class="btn btn-danger del-btn" data-id="${b.id}" title="Delete">✕</button>
-      `;
-      el.querySelector('.blog-meta').addEventListener('click', () => selectBlog(b));
-      el.querySelector('.del-btn').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        await deleteBlog(b.id, el);
-      });
-      blogList.appendChild(el);
+// ── WebGPU backend (WebLLM / MLC) ─────────────────────────────────────────
+async function initWebGPU(model, onProg) {
+  if (!webllmLib) {
+    setStatus('llm', 'Loading WebLLM…');
+    webllmLib = await import('https://esm.run/@mlc-ai/web-llm');
+  }
+  if (webllmEngine) { try { await webllmEngine.unload(); } catch {} webllmEngine = null; }
+  webllmEngine = await webllmLib.CreateMLCEngine(model.webgpu.mlcId, {
+    initProgressCallback: r => onProg(Math.round((r.progress || 0) * 100)),
+  });
+}
+
+async function* streamWebGPU(messages, model) {
+  if (!webllmEngine) throw new Error('WebGPU model not loaded.');
+  const opts = { temperature: model.sampling.temp ?? 0.7 };
+  if (model.sampling.top_p != null) opts.top_p = model.sampling.top_p;
+  const stream = await webllmEngine.chat.completions.create({
+    messages, stream: true, ...opts,
+  });
+  for await (const chunk of stream) {
+    const delta = chunk.choices[0]?.delta?.content;
+    if (delta) yield delta;
+  }
+}
+
+// ── Unified model management ───────────────────────────────────────────────
+function resolveBackend(model) {
+  const pref = document.getElementById('backend-select').value;
+  if (pref === 'webgpu') {
+    if (!hasWebGPU)    throw new Error('WebGPU is not available in this browser.');
+    if (!model.webgpu) throw new Error(`${model.label} is WASM-only. Switch backend to WebAssembly.`);
+    return 'webgpu';
+  }
+  if (pref === 'wasm') return 'wasm';
+  // auto: prefer WebGPU when available and model supports it
+  return (hasWebGPU && model.webgpu) ? 'webgpu' : 'wasm';
+}
+
+async function initModel(modelId) {
+  const model = MODEL_MAP[modelId];
+  if (!model) throw new Error('Unknown model: ' + modelId);
+  const backend = resolveBackend(model);
+
+  document.getElementById('llm-prog-wrap').style.display = 'flex';
+  document.getElementById('load-llm-btn').disabled = true;
+
+  const onProg = pct => {
+    document.getElementById('llm-bar-fill').style.width = pct + '%';
+    document.getElementById('llm-pct').textContent      = pct + '%';
+    setStatus('llm', `Downloading… ${pct}%`);
+  };
+
+  if (backend === 'webgpu') await initWebGPU(model, onProg);
+  else                      await initWASM(model, onProg);
+
+  activeModel   = model;
+  activeBackend = backend;
+  document.getElementById('llm-prog-wrap').style.display = 'none';
+  document.getElementById('load-llm-btn').disabled = false;
+  setStatus('llm', `${model.label} · ${backend === 'webgpu' ? 'WebGPU' : 'WASM'}`, 'ok');
+  updateBackendBadge(backend);
+}
+
+async function* streamModel(messages) {
+  if (!activeModel) throw new Error('No model loaded — click Load in the toolbar.');
+  if (activeBackend === 'webgpu') yield* streamWebGPU(messages, activeModel);
+  else                            yield* streamWASM(messages, activeModel);
+}
+
+function updateBackendBadge(backend) {
+  const b = document.getElementById('backend-badge');
+  if (backend === 'webgpu') {
+    b.textContent = '⚡ WebGPU · Chrome/Edge';
+    b.style.borderColor = 'var(--warn)';
+    b.style.color       = 'var(--warn)';
+  } else {
+    b.textContent = '⚙ WebAssembly · all browsers';
+    b.style.borderColor = 'var(--success)';
+    b.style.color       = 'var(--success)';
+  }
+}
+
+// ── URL proxy ─────────────────────────────────────────────────────────────
+// When running locally (Python server), use the FastAPI /api/proxy endpoint.
+// When hosted on GitHub Pages (or any static host), fall back to allorigins.win.
+const _useLocalProxy = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+async function fetchURL(url) {
+  if (_useLocalProxy) {
+    const r = await fetch('/api/proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
     });
-  } catch (e) {
-    console.error(e);
+    if (!r.ok) throw new Error(`Proxy error ${r.status}`);
+    return r.json();
   }
+  // Public CORS proxy — returns { contents, status: { url, content_type, http_code } }
+  const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+  if (!r.ok) throw new Error(`Proxy error ${r.status}`);
+  const data = await r.json();
+  return {
+    url:          data.status?.url          || url,
+    status:       data.status?.http_code    || 200,
+    content_type: data.status?.content_type || '',
+    text:         data.contents             || '',
+  };
 }
 
-async function deleteBlog(id, el) {
-  if (!confirm('Delete this blog twin?')) return;
-  const r = await fetch(`${API}/blogs/${id}`, { method: 'DELETE' });
-  if (r.ok || r.status === 204) {
-    el.remove();
-    if (activeBlogId === id) resetChat();
-    toast('Blog deleted', 'success');
-  }
+// ── Text utilities ────────────────────────────────────────────────────────
+function hashStr(str) {
+  str = str.trim().replace(/\/$/, '');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16).padStart(8, '0');
 }
 
-// ── Select blog ───────────────────────────────────────────────────────────────
+function chunkText(text, size = CHUNK_WORDS, overlap = CHUNK_OVERLAP) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const out = []; let start = 0;
+  while (start < words.length) {
+    const end = Math.min(start + size, words.length);
+    out.push(words.slice(start, end).join(' '));
+    if (end === words.length) break;
+    start += size - overlap;
+  }
+  return out;
+}
+
+// ── Blog / RSS parsing ────────────────────────────────────────────────────
+function parseRSS(xml) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.querySelector('parsererror')) return null;
+  const items = [...doc.querySelectorAll('item, entry')];
+  if (!items.length) return null;
+  return items.slice(0, MAX_ARTICLES).map(item => {
+    const q = k => item.querySelector(k)?.textContent?.trim() || '';
+    const title   = q('title') || 'Untitled';
+    const link    = q('link') || item.querySelector('link')?.getAttribute('href') || '';
+    const raw     = q('content\\:encoded') || q('content') || q('summary') || q('description');
+    const content = new DOMParser().parseFromString(raw, 'text/html').body.textContent?.trim() || '';
+    const author  = q('author name') || q('dc\\:creator') || q('author') || null;
+    const pub     = q('pubDate') || q('published') || q('updated') || null;
+    return { title, url: link, content, author: author || null, published: pub };
+  }).filter(a => a.url && a.content.length > 80);
+}
+
+function parseHTML(html, baseUrl) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const base = doc.createElement('base'); base.href = baseUrl; doc.head.prepend(base);
+
+  const feedEl = doc.querySelector(
+    'link[rel="alternate"][type*="rss"], link[rel="alternate"][type*="atom"]'
+  );
+  const feedUrl = feedEl ? new URL(feedEl.getAttribute('href'), baseUrl).href : null;
+
+  const ARTICLE_RE = /\/(post|blog|article|entry|p|story|news|writing|essay|note)\//i;
+  const seen = new Set([baseUrl]); const articleLinks = [];
+  for (const a of doc.querySelectorAll('a[href]')) {
+    try {
+      const href = new URL(a.getAttribute('href'), baseUrl).href.split('#')[0].split('?')[0];
+      if (!seen.has(href) && new URL(href).hostname === new URL(baseUrl).hostname
+          && ARTICLE_RE.test(new URL(href).pathname)) { seen.add(href); articleLinks.push(href); }
+    } catch {}
+  }
+
+  let single = null;
+  try {
+    const art = new Readability(doc.cloneNode(true)).parse();
+    if (art?.textContent?.trim().length > 200)
+      single = { title: art.title, content: art.textContent.trim(), author: art.byline || null };
+  } catch {}
+
+  return { feedUrl, articleLinks, single };
+}
+
+function readArticle(html, url) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const base = doc.createElement('base'); base.href = url; doc.head.prepend(base);
+  try {
+    const art = new Readability(doc.cloneNode(true)).parse();
+    if (art?.textContent?.trim().length > 100)
+      return { title: art.title, content: art.textContent.trim(), author: art.byline || null };
+  } catch {}
+  return null;
+}
+
+// ── Ingestion ─────────────────────────────────────────────────────────────
+async function ingestBlog(url, onProg) {
+  const id = hashStr(url);
+  onProg(0.02, 'Fetching URL…');
+
+  const { content_type, text, url: finalUrl } = await fetchURL(url);
+  let rawArticles = [];
+
+  if (/xml|rss|atom/.test(content_type)) rawArticles = parseRSS(text) || [];
+
+  if (!rawArticles.length) {
+    const { feedUrl, articleLinks, single } = parseHTML(text, finalUrl || url);
+
+    if (feedUrl) {
+      onProg(0.05, 'Found feed, fetching…');
+      try { rawArticles = parseRSS((await fetchURL(feedUrl)).text) || []; } catch {}
+    }
+    if (!rawArticles.length && articleLinks.length) {
+      const links = articleLinks.slice(0, MAX_ARTICLES);
+      for (let i = 0; i < links.length; i++) {
+        onProg(0.08 + (i / links.length) * 0.32, `Fetching article ${i + 1}/${links.length}…`);
+        try {
+          const d = await fetchURL(links[i]);
+          const art = readArticle(d.text, links[i]);
+          if (art) rawArticles.push({ url: links[i], ...art });
+        } catch {}
+      }
+    }
+    if (!rawArticles.length && single) rawArticles.push({ url: finalUrl || url, ...single });
+  }
+
+  if (!rawArticles.length) throw new Error('No articles found at this URL.');
+
+  onProg(0.42, `Processing ${rawArticles.length} articles…`);
+
+  const chunks = [];
+  for (const art of rawArticles)
+    for (const txt of chunkText(art.content))
+      chunks.push({
+        id: `${id}_${chunks.length}`, blogId: id,
+        articleUrl: art.url, articleTitle: art.title || art.url,
+        author: art.author || null, text: txt, embedding: null,
+      });
+
+  const BATCH = 8;
+  for (let i = 0; i < chunks.length; i += BATCH) {
+    const batch = chunks.slice(i, i + BATCH);
+    onProg(0.42 + (i / chunks.length) * 0.5,
+      `Embedding ${i + 1}–${Math.min(i + BATCH, chunks.length)} / ${chunks.length}…`);
+    const embs = await embed(batch.map(c => c.text));
+    embs.forEach((e, j) => { batch[j].embedding = e; });
+  }
+
+  onProg(0.93, 'Saving to browser storage…');
+  const authors = [...new Set(rawArticles.map(a => a.author).filter(Boolean))];
+  const blog = {
+    id, url, title: rawArticles[0]?.title || url,
+    authors, articleCount: rawArticles.length,
+    createdAt: new Date().toISOString(),
+  };
+  await dbPut('blogs', blog);
+  for (const c of chunks) await dbPut('chunks', c);
+  memChunks.set(id, chunks);
+  onProg(1, 'Done!');
+  return blog;
+}
+
+// ── Vector search ─────────────────────────────────────────────────────────
+function cosine(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+  return dot / (Math.sqrt(na * nb) + 1e-8);
+}
+
+function search(qEmb, blogId, author, k) {
+  return (memChunks.get(blogId) || [])
+    .filter(c => !author || c.author === author)
+    .map(c => ({ ...c, score: cosine(qEmb, c.embedding) }))
+    .sort((a, b) => b.score - a.score).slice(0, k);
+}
+
+// ── Digital-twin system prompt ────────────────────────────────────────────
+const TWIN_PROMPT = `You are a digital twin of {author}.
+You embody the knowledge, writing style, perspectives, and ideas expressed in their published articles.
+
+When answering:
+- Draw exclusively from the ideas in the provided article excerpts.
+- Maintain the author's characteristic voice and intellectual tone.
+- If a question goes beyond the articles, acknowledge this while staying in character.
+- Never fabricate facts or opinions not supported by the excerpts.
+- Cite article titles naturally when relevant.
+
+--- Article excerpts ---
+{context}
+--- End of excerpts ---`;
+
+// ── UI helpers ────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+let _toast;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `show ${type}`;
+  clearTimeout(_toast); _toast = setTimeout(() => el.className = '', 3500);
+}
+function setStatus(id, txt, cls = '') {
+  const el = document.getElementById(id === 'embed' ? 'embed-status' : 'llm-status');
+  el.textContent = txt; el.className = `mb-status ${cls}`;
+}
+function setIngestProg(ratio, msg) {
+  document.getElementById('ingest-prog').style.display = '';
+  document.getElementById('ingest-bar').style.width = (ratio * 100) + '%';
+  document.getElementById('ingest-msg').textContent = msg;
+}
+
+// ── Blog list ─────────────────────────────────────────────────────────────
+async function renderBlogList() {
+  const blogs = await dbAll('blogs');
+  const el = document.getElementById('blog-list'); el.innerHTML = '';
+  blogs.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).forEach(b => {
+    const div = document.createElement('div');
+    div.className = 'blog-item' + (b.id === activeBlogId ? ' active' : '');
+    div.dataset.id = b.id;
+    div.innerHTML = `
+      <div class="blog-meta">
+        <div class="blog-title" title="${esc(b.title)}">${esc(b.title)}</div>
+        <div class="blog-sub">${b.articleCount} articles</div>
+        ${b.authors.length ? `<div class="blog-auth">✍ ${esc(b.authors.join(', '))}</div>` : ''}
+      </div>
+      <button class="btn btn-danger del-btn" data-id="${b.id}">✕</button>`;
+    div.querySelector('.blog-meta').addEventListener('click', () => selectBlog(b));
+    div.querySelector('.del-btn').addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm('Delete this blog twin?')) return;
+      await dbDel('blogs', b.id);
+      await dbDelIdx('chunks', 'blogId', b.id);
+      memChunks.delete(b.id);
+      if (activeBlogId === b.id) resetChat();
+      div.remove(); toast('Blog deleted', 'success');
+    });
+    el.appendChild(div);
+  });
+}
+
 function selectBlog(b) {
-  activeBlogId = b.id;
-  history = [];
-  document.querySelectorAll('.blog-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.id === b.id);
-  });
-
-  // Populate author selector
-  authorSel.innerHTML = '<option value="">All authors</option>';
+  activeBlogId = b.id; history = [];
+  document.querySelectorAll('.blog-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === b.id));
+  const sec = document.getElementById('author-section');
+  const sel = document.getElementById('author-select');
+  sel.innerHTML = '<option value="">All authors</option>';
   (b.authors || []).forEach(a => {
-    const opt = document.createElement('option');
-    opt.value = a; opt.textContent = a;
-    authorSel.appendChild(opt);
+    const o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o);
   });
-  authorSec.style.display = b.authors.length > 1 ? '' : 'none';
-
+  sec.style.display = b.authors.length > 1 ? '' : 'none';
   buildChatUI(b);
 }
 
 function resetChat() {
-  activeBlogId = null;
-  history = [];
-  authorSec.style.display = 'none';
-  chatArea.innerHTML = '';
-  chatArea.appendChild(emptyState);
-  emptyState.style.display = '';
+  activeBlogId = null; history = [];
+  document.getElementById('author-section').style.display = 'none';
+  const area = document.getElementById('chat-area');
+  area.innerHTML = '';
+  const es = document.createElement('div');
+  es.className = 'empty-state';
+  es.innerHTML = `<div class="empty-icon">🧠</div>
+    <h2>Chat with a blog's ideas — fully local</h2>
+    <p>Paste a blog URL and click <strong>Create Twin</strong>.</p>`;
+  area.appendChild(es);
 }
 
-// ── Chat UI ───────────────────────────────────────────────────────────────────
 function buildChatUI(b) {
-  chatArea.innerHTML = `
+  const area = document.getElementById('chat-area');
+  area.innerHTML = `
     <div id="messages"></div>
     <div class="input-row">
       <textarea id="message-input" rows="1"
         placeholder="Ask ${esc(b.authors[0] || 'the author')} anything…"></textarea>
       <button class="btn btn-primary" id="send-btn">➤</button>
-    </div>
-  `;
+    </div>`;
 
-  const msgEl   = document.getElementById('messages');
-  const input   = document.getElementById('message-input');
-  const sendBtn = document.getElementById('send-btn');
+  const msgs  = document.getElementById('messages');
+  const input = document.getElementById('message-input');
+  const btn   = document.getElementById('send-btn');
 
-  // Auto-resize textarea
   input.addEventListener('input', () => {
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 120) + 'px';
   });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+  btn.addEventListener('click', send);
+  _triggerSend = text => { input.value = text; send(); };
 
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  });
-  sendBtn.addEventListener('click', sendMessage);
-
-  async function sendMessage() {
+  async function send() {
     const text = input.value.trim();
     if (!text || !activeBlogId) return;
+    if (!activeModel) { toast('Load a model first — click "Load" in the toolbar', 'error'); return; }
 
-    input.value = '';
-    input.style.height = 'auto';
-    input.disabled = true;
-    sendBtn.disabled = true;
+    input.value = ''; input.style.height = 'auto';
+    input.disabled = true; btn.disabled = true;
 
-    appendMessage(msgEl, 'user', text);
-
-    const typingEl = appendTyping(msgEl);
+    appendMsg(msgs, 'user', text);
+    const typingEl = appendTyping(msgs);
 
     try {
-      const author = authorSel.value || null;
-      const payload = {
-        blog_id: activeBlogId,
-        message: text,
-        author,
-        history: history.slice(-10),   // keep last 10 turns
-      };
-      const r = await fetch(`${API}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const [qEmb] = await embed([text]);
+      const author = document.getElementById('author-select').value || null;
+      const hits   = search(qEmb, activeBlogId, author, TOP_K);
+
       typingEl.remove();
 
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({ detail: r.statusText }));
-        appendMessage(msgEl, 'error', err.detail || 'Something went wrong.');
-      } else {
-        const d = await r.json();
-        appendMessage(msgEl, 'bot', d.response, d.sources);
-        history.push({ role: 'user', content: text });
-        history.push({ role: 'assistant', content: d.response });
+      if (!hits.length) { appendMsg(msgs, 'bot', "I couldn't find relevant articles to answer your question."); return; }
+
+      const context    = hits.map(h => h.text).join('\n\n---\n\n');
+      const seen       = new Set(); const sources = [];
+      for (const h of hits)
+        if (!seen.has(h.articleUrl)) { seen.add(h.articleUrl); sources.push({ title: h.articleTitle, url: h.articleUrl }); }
+
+      const authorName = author || memChunks.get(activeBlogId)?.[0]?.author || 'the blog author';
+      const sysPrompt  = TWIN_PROMPT.replace('{author}', authorName).replace('{context}', context);
+
+      const messages = [
+        { role: 'system',    content: sysPrompt },
+        ...history.slice(-MAX_HISTORY),
+        { role: 'user',      content: text },
+      ];
+
+      const botEl    = appendMsg(msgs, 'bot', '', sources);
+      const bubble   = botEl.querySelector('.bubble');
+      const textNode = bubble.firstChild;
+      let full = '';
+
+      // Show spinner until first token arrives
+      const spinner = document.createElement('span');
+      spinner.className = 'llm-spinner';
+      bubble.insertBefore(spinner, textNode);
+
+      let thinkDetails = null, thinkContent = null, thinkDone = false;
+
+      for await (const token of streamModel(messages)) {
+        spinner.remove();
+        full += token;
+
+        const tStart = full.indexOf('<think>');
+        const tEnd   = full.indexOf('</think>');
+
+        if (tStart !== -1) {
+          if (!thinkDetails) {
+            thinkDetails = document.createElement('details');
+            thinkDetails.className = 'think-block';
+            thinkDetails.setAttribute('open', '');
+            const summary = document.createElement('summary');
+            summary.textContent = 'Thinking…';
+            thinkContent = document.createElement('div');
+            thinkContent.className = 'think-content';
+            thinkDetails.append(summary, thinkContent);
+            bubble.insertBefore(thinkDetails, textNode);
+          }
+          if (tEnd === -1) {
+            thinkContent.textContent = full.slice(tStart + 7);
+            textNode.nodeValue = '';
+          } else {
+            thinkContent.textContent = full.slice(tStart + 7, tEnd).trim();
+            textNode.nodeValue = full.slice(tEnd + 8).trimStart();
+            if (!thinkDone) {
+              thinkDone = true;
+              thinkDetails.removeAttribute('open');
+              thinkDetails.querySelector('summary').textContent = 'Thought process \u25b8 click to expand';
+            }
+          }
+          if (thinkContent) thinkContent.scrollTop = thinkContent.scrollHeight;
+        } else {
+          textNode.nodeValue = full;
+        }
+        msgs.scrollTop = msgs.scrollHeight;
       }
-    } catch (e) {
-      typingEl.remove();
-      appendMessage(msgEl, 'error', 'Network error: ' + e.message);
-    }
+      spinner.remove();
 
-    input.disabled = false;
-    sendBtn.disabled = false;
-    input.focus();
+      const answerForHistory = (() => {
+        const i = full.indexOf('</think>');
+        return i !== -1 ? full.slice(i + 8).trimStart() : full;
+      })();
+      history.push({ role: 'user',      content: text });
+      history.push({ role: 'assistant', content: answerForHistory });
+    } catch (err) {
+      typingEl?.remove();
+      appendMsg(msgs, 'error', String(err));
+    } finally {
+      input.disabled = false; btn.disabled = false; input.focus();
+    }
   }
 }
 
-// ── Message helpers ───────────────────────────────────────────────────────────
-function appendMessage(container, role, text, sources) {
-  const isUser = role === 'user';
+function appendMsg(container, role, text, sources) {
+  const isUser  = role === 'user';
   const isError = role === 'error';
-
   const wrap = document.createElement('div');
   wrap.className = `message ${isUser ? 'user' : 'bot'}`;
 
   let sourcesHTML = '';
-  if (sources && sources.length) {
-    const links = sources.map(s =>
-      `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || s.url)}</a>`
-    ).join(' · ');
-    sourcesHTML = `<div class="sources">📄 Sources: ${links}</div>`;
+  if (sources?.length) {
+    const links = sources.map(s => `<a href="${esc(s.url)}" target="_blank">${esc(s.title || s.url)}</a>`).join(' · ');
+    sourcesHTML = `<div class="sources">📄 ${links}</div>`;
   }
 
   wrap.innerHTML = `
     <div class="avatar">${isUser ? '👤' : '🧠'}</div>
-    <div class="bubble" style="${isError ? 'color:var(--error);border-color:var(--error)' : ''}">
-      ${esc(text)}${sourcesHTML}
-    </div>
-  `;
+    <div class="bubble" style="${isError ? 'color:var(--error);border-color:var(--error)' : ''}">${sourcesHTML}</div>`;
+
+  wrap.querySelector('.bubble').insertBefore(document.createTextNode(text), wrap.querySelector('.bubble').firstChild);
   container.appendChild(wrap);
   container.scrollTop = container.scrollHeight;
   return wrap;
 }
 
 function appendTyping(container) {
-  const wrap = document.createElement('div');
-  wrap.className = 'message bot typing';
-  wrap.innerHTML = `
-    <div class="avatar">🧠</div>
-    <div class="bubble">
-      <div class="typing-dots"><span></span><span></span><span></span></div>
-    </div>
-  `;
-  container.appendChild(wrap);
-  container.scrollTop = container.scrollHeight;
-  return wrap;
+  const w = document.createElement('div');
+  w.className = 'message bot typing';
+  w.innerHTML = `<div class="avatar">🧠</div>
+    <div class="bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  container.appendChild(w); container.scrollTop = container.scrollHeight;
+  return w;
 }
 
-// ── Ingest ────────────────────────────────────────────────────────────────────
-ingestBtn.addEventListener('click', async () => {
-  const url = blogUrlInput.value.trim();
+// ── Ingest handler ────────────────────────────────────────────────────────
+async function handleIngest() {
+  const url = document.getElementById('blog-url-input').value.trim();
   if (!url) { toast('Please enter a blog URL', 'error'); return; }
-
-  ingestBtn.disabled = true;
-  ingestProg.style.display = '';
-
+  if (!embedder) { toast('Embedder still loading — please wait', 'error'); return; }
+  const btn = document.getElementById('ingest-btn');
+  btn.disabled = true;
   try {
-    const r = await fetch(`${API}/ingest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
-    });
-    const d = await r.json();
-    if (!r.ok) { toast(d.detail || 'Ingestion failed', 'error'); return; }
+    const blog = await ingestBlog(url, (r, m) => setIngestProg(r, m));
+    document.getElementById('blog-url-input').value = '';
+    document.getElementById('ingest-prog').style.display = 'none';
+    await renderBlogList();
+    selectBlog(blog);
+    toast(`✓ ${blog.articleCount} articles ingested`, 'success');
+  } catch (err) {
+    document.getElementById('ingest-prog').style.display = 'none';
+    toast(String(err), 'error');
+  } finally { btn.disabled = false; }
+}
 
-    toast(`✓ ${d.article_count} articles ingested`, 'success');
-    blogUrlInput.value = '';
-    await loadBlogs();
-    selectBlog(d);
-  } catch (e) {
-    toast('Network error: ' + e.message, 'error');
-  } finally {
-    ingestBtn.disabled = false;
-    ingestProg.style.display = 'none';
+// ── Boot ──────────────────────────────────────────────────────────────────
+async function boot() {
+  db = await openDB();
+
+  // Disable WebGPU option if not available; update badge if it is
+  const gpuOpt = document.querySelector('#backend-select [value="webgpu"]');
+  if (!hasWebGPU) {
+    gpuOpt.disabled = true;
+    gpuOpt.textContent += ' (unavailable)';
+  } else {
+    const badge = document.getElementById('backend-badge');
+    badge.textContent = '⚡ WebGPU detected';
+    badge.style.borderColor = 'var(--warn)';
+    badge.style.color       = 'var(--warn)';
   }
-});
 
-blogUrlInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') ingestBtn.click();
-});
+  // Load existing blogs + chunks into memory
+  const blogs = await dbAll('blogs');
+  for (const b of blogs) {
+    const chunks = await dbByIdx('chunks', 'blogId', b.id);
+    memChunks.set(b.id, chunks);
+  }
+  await renderBlogList();
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
-let toastTimer;
-function toast(msg, type = '') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = `show ${type}`;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = ''; }, 3500);
+  // Embedder downloads in background (~23 MB, cached after first run)
+  initEmbedder().catch(err => setStatus('embed', 'Error: ' + err.message, 'err'));
+
+  // Load button
+  document.getElementById('load-llm-btn').addEventListener('click', async () => {
+    const modelId = document.getElementById('llm-select').value;
+    try {
+      await initModel(modelId);
+      toast(`${activeModel.label} ready (${activeBackend === 'webgpu' ? 'WebGPU' : 'WASM'})`, 'success');
+    } catch (err) {
+      setStatus('llm', 'Error: ' + err.message, 'err');
+      toast('Load failed: ' + err.message, 'error');
+      document.getElementById('load-llm-btn').disabled = false;
+      document.getElementById('llm-prog-wrap').style.display = 'none';
+    }
+  });
+
+  document.getElementById('ingest-btn').addEventListener('click', handleIngest);
+  document.getElementById('blog-url-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleIngest();
+  });
+  document.getElementById('author-select').addEventListener('change', () => { history = []; });
+
+  // Auto-run when ?url= is present in the query string
+  const autoUrl = new URLSearchParams(window.location.search).get('url');
+  if (autoUrl) autoRun(autoUrl);
 }
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
-function esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ── Auto-run from URL parameter (?url=https://...) ───────────────────────
+
+function waitForEmbedder() {
+  if (embedder) return Promise.resolve();
+  return new Promise(resolve => {
+    const id = setInterval(() => { if (embedder) { clearInterval(id); resolve(); } }, 200);
+  });
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
-(async () => {
-  await Promise.all([checkHealth(), loadBlogs()]);
-  setInterval(checkHealth, 30000);
-})();
+async function autoRun(targetUrl) {
+  try {
+    // 1. Pre-select the model in the dropdown
+    document.getElementById('llm-select').value = 'qwen3-0.6b';
+    toast('Auto mode: waiting for embedder…');
+
+    // 2. Wait for the embedding model to finish downloading
+    await waitForEmbedder();
+
+    // 3. Load the LLM
+    toast('Auto mode: loading Qwen3-0.6B…');
+    await initModel('qwen3-0.6b');
+
+    // 4. Ingest the blog
+    toast('Auto mode: ingesting blog…');
+    const blog = await ingestBlog(targetUrl, (r, m) => setIngestProg(r, m));
+    document.getElementById('ingest-prog').style.display = 'none';
+    await renderBlogList();
+    selectBlog(blog);
+
+    // 5. Fire the summary query once the chat UI is ready
+    toast(`✓ ${blog.articleCount} article(s) loaded — generating summary…`, 'success');
+    await new Promise(r => setTimeout(r, 300)); // let buildChatUI settle
+    _triggerSend?.('What are the main ideas and key topics covered here? Give me a concise summary.');
+  } catch (err) {
+    document.getElementById('ingest-prog').style.display = 'none';
+    toast('Auto mode failed: ' + err.message, 'error');
+  }
+}
+
+boot();
 </script>
 </body>
 </html>
