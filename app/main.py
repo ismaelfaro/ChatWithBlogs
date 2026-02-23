@@ -1,13 +1,13 @@
 """
-ChatMyIdeas — browser-local backend.
+ChatWithBlogs — browser-local backend.
 
 The server does exactly two things:
   1. Serve the single-page application (app/static/index.html).
   2. Proxy external HTTP requests so the browser can fetch arbitrary
      URLs without hitting CORS restrictions.
 
-All AI work — embeddings (Transformers.js) and LLM inference (WebLLM /
-WebGPU) — runs entirely inside the user's browser.  No Ollama, no
+All AI work — embeddings and LLM inference (Transformers.js / ONNX
+Runtime Web) — runs entirely inside the user's browser.  No Ollama, no
 ChromaDB, no sentence-transformers required on the server.
 """
 
@@ -31,7 +31,7 @@ logging.basicConfig(
 )
 
 app = FastAPI(
-    title="ChatMyIdeas — browser-local proxy",
+    title="ChatWithBlogs — browser-local proxy",
     description="CORS proxy + static file server. All AI runs in the browser.",
     docs_url=None,
     redoc_url=None,
@@ -64,7 +64,7 @@ app.add_middleware(_COOPCOEPMiddleware)
 
 _ALLOWED_SCHEMES = {"http", "https"}
 _REQUEST_HEADERS = {
-    "User-Agent": "ChatMyIdeas/1.0 (+https://github.com/chatmyideas/chatmyideas)",
+    "User-Agent": "ChatWithBlogs/1.0",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ChatMyIdeas — Browser Local</title>
+  <title>ChatWithBlogs</title>
   <script src="https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -249,23 +249,15 @@
   <div class="mb-item">
     <span class="mb-label">Model</span>
     <select class="llm-select" id="llm-select">
-      <optgroup label="── LFM2 (greedy · RAG-tuned) ──">
-        <option value="lfm2-350m-q4" selected>LFM2-350M · Q4_K_M (229 MB) · WASM</option>
-        <option value="lfm2-350m-q5">LFM2-350M · Q5_K_M (260 MB) · WASM</option>
-        <option value="lfm2-350m-q8">LFM2-350M · Q8_0   (379 MB) · WASM</option>
-        <option value="lfm2-1.2b-q4">LFM2-1.2B · Q4_K_M  (731 MB) · WASM</option>
-        <option value="lfm2-1.2b-rag-q4">LFM2-1.2B-RAG · Q4_K_M (731 MB) · WASM</option>
+      <optgroup label="── WebGPU + WASM ──">
+        <option value="qwen3-0.6b" selected>Qwen3-0.6B (~350 MB) · WASM+GPU</option>
+        <option value="qwen3-1.7b">Qwen3-1.7B (~950 MB) · WASM+GPU</option>
+        <option value="gemma2-2b">Gemma 2 2B (1.71 GB) · GPU only</option>
       </optgroup>
-      <optgroup label="── Gemma ──">
-        <option value="gemma3-270m-q4">Gemma 3 270M · Q4_K_M (253 MB) · WASM</option>
-        <option value="gemma2-2b-q4">Gemma 2 2B · Q4_K_M (1.71 GB) · WASM+GPU</option>
-      </optgroup>
-      <optgroup label="── Qwen3 ──">
-        <option value="qwen3-0.6b-q4">Qwen3-0.6B · Q4_K_M (397 MB) · WASM+GPU</option>
-        <option value="qwen3-1.7b-q4">Qwen3-1.7B · Q4_K_M (1.11 GB) · WASM+GPU</option>
-      </optgroup>
-      <optgroup label="── Granite ──">
-        <option value="granite-4-1b">Granite 4.0 1B · MXFP4 (1.55 GB) · WASM</option>
+      <optgroup label="── WASM only ──">
+        <option value="lfm2.5-1.2b">LFM2.5-1.2B Instruct (~700 MB) · WASM</option>
+        <option value="lfm2.5-1.2b-thinking">LFM2.5-1.2B Thinking (~700 MB) · WASM</option>
+        <option value="gemma3-270m">Gemma 3 270M (~260 MB) · WASM</option>
       </optgroup>
     </select>
     <button class="btn btn-sm btn-primary" id="load-llm-btn">Load</button>
@@ -281,7 +273,7 @@
 <!-- ── Header ────────────────────────────────────────────────────────────── -->
 <header>
   <div>
-    <div class="logo">Chat<span>MyIdeas</span> <span class="badge">Browser Local</span></div>
+    <div class="logo">Chat<span>WithBlogs</span> <span class="badge">Browser Local</span></div>
     <div class="header-sub">AI runs in your browser via WebAssembly or WebGPU — nothing leaves your machine</div>
   </div>
 </header>
@@ -327,67 +319,42 @@
 <script type="module">
 
 // ── Imports ────────────────────────────────────────────────────────────────
-// Transformers.js — local embeddings via ONNX
-import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js';
-
-// wllama — llama.cpp compiled to WebAssembly; loads GGUF directly from HuggingFace
-import { Wllama } from 'https://cdn.jsdelivr.net/npm/@wllama/wllama/esm/index.js';
+// Transformers.js v3 — embeddings + WASM LLM inference via ONNX Runtime Web
+import { pipeline, env, TextStreamer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/dist/transformers.js';
 
 // ── Model registry ─────────────────────────────────────────────────────────
-//   wasm:   { repo, file }           — GGUF via wllama (all browsers)
+//   wasm:   { modelId, dtype }       — ONNX via Transformers.js (all browsers)
 //   webgpu: { mlcId }                — MLC-quantised via WebLLM (Chrome/Edge)
-//   template: chatml | qwen3 | gemma2 | gemma3 | granite
 //   sampling: { temp, top_p? }
-//   stops:  stop strings for wllama
 
 const MODEL_LIST = [
-  // ── LFM2 (hybrid arch — WASM only, greedy decoding for RAG) ───────────
-  { id:'lfm2-350m-q4',     label:'LFM2-350M · Q4_K_M',      size:'229 MB',
-    template:'chatml',  sampling:{temp:0.0},            stops:['<|im_end|>','<|im_start|>'],
-    wasm:{repo:'LiquidAI/LFM2-350M-GGUF',     file:'LFM2-350M-Q4_K_M.gguf'} },
-
-  { id:'lfm2-350m-q5',     label:'LFM2-350M · Q5_K_M',      size:'260 MB',
-    template:'chatml',  sampling:{temp:0.0},            stops:['<|im_end|>','<|im_start|>'],
-    wasm:{repo:'LiquidAI/LFM2-350M-GGUF',     file:'LFM2-350M-Q5_K_M.gguf'} },
-
-  { id:'lfm2-350m-q8',     label:'LFM2-350M · Q8_0',        size:'379 MB',
-    template:'chatml',  sampling:{temp:0.0},            stops:['<|im_end|>','<|im_start|>'],
-    wasm:{repo:'LiquidAI/LFM2-350M-GGUF',     file:'LFM2-350M-Q8_0.gguf'} },
-
-  { id:'lfm2-1.2b-q4',     label:'LFM2-1.2B · Q4_K_M',     size:'731 MB',
-    template:'chatml',  sampling:{temp:0.0},            stops:['<|im_end|>','<|im_start|>'],
-    wasm:{repo:'LiquidAI/LFM2-1.2B-GGUF',     file:'LFM2-1.2B-Q4_K_M.gguf'} },
-
-  { id:'lfm2-1.2b-rag-q4', label:'LFM2-1.2B-RAG · Q4_K_M', size:'731 MB',
-    template:'chatml',  sampling:{temp:0.0},            stops:['<|im_end|>','<|im_start|>'],
-    wasm:{repo:'LiquidAI/LFM2-1.2B-RAG-GGUF', file:'LFM2-1.2B-RAG-Q4_K_M.gguf'} },
-
-  // ── Gemma ─────────────────────────────────────────────────────────────
-  { id:'gemma3-270m-q4',   label:'Gemma 3 270M · Q4_K_M',   size:'253 MB',
-    template:'gemma3',  sampling:{temp:1.0,top_p:0.9},  stops:['<end_of_turn>'],
-    wasm:{repo:'bartowski/google_gemma-3-270m-it-GGUF', file:'google_gemma-3-270m-it-Q4_K_M.gguf'} },
-
-  { id:'gemma2-2b-q4',     label:'Gemma 2 2B · Q4_K_M',     size:'1.71 GB',
-    template:'gemma2',  sampling:{temp:1.0,top_p:0.9},  stops:['<end_of_turn>'],
-    wasm:{repo:'bartowski/gemma-2-2b-it-GGUF', file:'gemma-2-2b-it-Q4_K_M.gguf'},
-    webgpu:{mlcId:'gemma-2-2b-it-q4f16_1-MLC'} },
-
-  // ── Granite 4.0 (WASM only) ────────────────────────────────────────────
-  { id:'granite-4-1b',     label:'Granite 4.0 1B (MXFP4)',  size:'1.55 GB',
-    template:'granite', sampling:{temp:0.7,top_p:0.95}, stops:['<|end_of_text|>'],
-    wasm:{repo:'magiccodingman/Granite-4.0-H-1B-Unsloth-MXFP4-Hybrid-GGUF',
-          file:'granite-4.0-h-1b-unsloth-MXFP4_MOE-output_mxfp4-router_gate_emb_q8.gguf'} },
-
-  // ── Qwen3 (WASM + WebGPU, non-thinking mode) ──────────────────────────
-  { id:'qwen3-0.6b-q4',    label:'Qwen3-0.6B · Q4_K_M',     size:'397 MB',
-    template:'qwen3',   sampling:{temp:0.7,top_p:0.8},  stops:['<|im_end|>','<|im_start|>'],
-    wasm:{repo:'unsloth/Qwen3-0.6B-GGUF', file:'Qwen3-0.6B-Q4_K_M.gguf'},
+  // ── WebGPU + WASM (Transformers.js ONNX) ──────────────────────────────
+  { id:'qwen3-0.6b',    label:'Qwen3-0.6B',          size:'~350 MB',
+    sampling:{temp:0.7,top_p:0.8},
+    wasm:  {modelId:'onnx-community/Qwen3-0.6B-ONNX',  dtype:'q4f16'},
     webgpu:{mlcId:'Qwen3-0.6B-q4f16_1-MLC'} },
 
-  { id:'qwen3-1.7b-q4',    label:'Qwen3-1.7B · Q4_K_M',     size:'1.11 GB',
-    template:'qwen3',   sampling:{temp:0.7,top_p:0.8},  stops:['<|im_end|>','<|im_start|>'],
-    wasm:{repo:'unsloth/Qwen3-1.7B-GGUF', file:'Qwen3-1.7B-Q4_K_M.gguf'},
+  { id:'qwen3-1.7b',    label:'Qwen3-1.7B',          size:'~950 MB',
+    sampling:{temp:0.7,top_p:0.8},
+    wasm:  {modelId:'onnx-community/Qwen3-1.7B-ONNX',  dtype:'q4f16'},
     webgpu:{mlcId:'Qwen3-1.7B-q4f16_1-MLC'} },
+
+  { id:'gemma2-2b',     label:'Gemma 2 2B',          size:'1.71 GB',
+    sampling:{temp:1.0,top_p:0.9},
+    webgpu:{mlcId:'gemma-2-2b-it-q4f16_1-MLC'} },
+
+  // ── WASM only (Transformers.js ONNX) ──────────────────────────────────
+  { id:'lfm2.5-1.2b',   label:'LFM2.5-1.2B Instruct', size:'~700 MB',
+    sampling:{temp:0.7,top_p:0.9},
+    wasm: {modelId:'LiquidAI/LFM2.5-1.2B-Instruct-ONNX', dtype:'q4'} },
+
+  { id:'lfm2.5-1.2b-thinking', label:'LFM2.5-1.2B Thinking', size:'~700 MB',
+    sampling:{temp:0.7,top_p:0.9},
+    wasm: {modelId:'LiquidAI/LFM2.5-1.2B-Thinking-ONNX',  dtype:'q4'} },
+
+  { id:'gemma3-270m',   label:'Gemma 3 270M',         size:'~260 MB',
+    sampling:{temp:1.0,top_p:0.9},
+    wasm: {modelId:'onnx-community/gemma-3-270m-it-ONNX', dtype:'fp32'} },
 ];
 
 const MODEL_MAP = Object.fromEntries(MODEL_LIST.map(m => [m.id, m]));
@@ -400,19 +367,12 @@ const TOP_K         = 5;
 const MAX_HISTORY   = 10;
 const MAX_ARTICLES  = 60;
 
-// wllama WASM binaries from jsDelivr
-const WLLAMA_CDN = 'https://cdn.jsdelivr.net/npm/@wllama/wllama/esm/';
-const WASM_PATHS = {
-  'single-thread/wllama.wasm': WLLAMA_CDN + 'single-thread/wllama.wasm',
-  'multi-thread/wllama.wasm':  WLLAMA_CDN + 'multi-thread/wllama.wasm',
-};
-
 // WebGPU availability (checked once at startup)
 const hasWebGPU = !!(typeof navigator !== 'undefined' && navigator.gpu);
 
 // ── Global state ───────────────────────────────────────────────────────────
-let embedder     = null;   // Transformers.js pipeline
-let wllama       = null;   // wllama instance (reused, exited on model switch)
+let embedder     = null;   // Transformers.js pipeline (embeddings)
+let txPipeline   = null;   // Transformers.js pipeline (LLM, WASM)
 let webllmEngine = null;   // WebLLM MLCEngine
 let webllmLib    = null;   // WebLLM module (lazy-loaded on first GPU use)
 let activeModel  = null;   // currently loaded MODEL_LIST entry
@@ -489,95 +449,50 @@ async function embed(texts) {
   return texts.map((_, i) => Array.from(out.data.slice(i * dim, (i + 1) * dim)));
 }
 
-// ── Prompt template formatters ─────────────────────────────────────────────
+// Chat templates are applied automatically by Transformers.js (WASM)
+// and by WebLLM (WebGPU) — no manual formatting needed.
 
-// ChatML — used by LFM2 (greedy, temp=0)
-function fmtChatML(msgs) {
-  return msgs.map(m => `<|im_start|>${m.role}\n${m.content}<|im_end|>`).join('\n')
-    + '\n<|im_start|>assistant\n';
-}
-
-// Qwen3 ChatML — pre-fills empty <think> block to disable thinking mode
-function fmtQwen3(msgs) {
-  return msgs.map(m => `<|im_start|>${m.role}\n${m.content}<|im_end|>`).join('\n')
-    + '\n<|im_start|>assistant\n<think>\n\n</think>\n\n';
-}
-
-// Gemma 2 — no system turn; inject system content into first user message
-function fmtGemma2(msgs) {
-  const sys  = msgs.find(m => m.role === 'system');
-  const conv = msgs.filter(m => m.role !== 'system');
-  let out = '<bos>';
-  conv.forEach((m, i) => {
-    let content = m.content;
-    if (i === 0 && sys) content = sys.content + '\n\n' + content;
-    const role = m.role === 'assistant' ? 'model' : m.role;
-    out += `<start_of_turn>${role}\n${content}<end_of_turn>\n`;
-  });
-  return out + '<start_of_turn>model\n';
-}
-
-// Gemma 3 — system turn supported
-function fmtGemma3(msgs) {
-  let out = '<bos>';
-  msgs.forEach(m => {
-    const role = m.role === 'assistant' ? 'model' : m.role;
-    out += `<start_of_turn>${role}\n${m.content}<end_of_turn>\n`;
-  });
-  return out + '<start_of_turn>model\n';
-}
-
-// Granite 4.0
-function fmtGranite(msgs) {
-  return msgs.map(m =>
-    `<|start_of_role|>${m.role}<|end_of_role|>${m.content}<|end_of_text|>\n`
-  ).join('') + '<|start_of_role|>assistant<|end_of_role|>';
-}
-
-function formatPrompt(msgs, template) {
-  switch (template) {
-    case 'chatml':  return fmtChatML(msgs);
-    case 'qwen3':   return fmtQwen3(msgs);
-    case 'gemma2':  return fmtGemma2(msgs);
-    case 'gemma3':  return fmtGemma3(msgs);
-    case 'granite': return fmtGranite(msgs);
-    default:        return fmtChatML(msgs);
-  }
-}
-
-// ── WASM backend (wllama) ──────────────────────────────────────────────────
+// ── WASM backend (Transformers.js / ONNX Runtime Web) ─────────────────────
 async function initWASM(model, onProg) {
-  if (wllama) { try { await wllama.exit(); } catch {} wllama = null; }
+  txPipeline = null;
   setStatus('llm', 'Initialising WASM…');
-  wllama = new Wllama(WASM_PATHS);
-  await wllama.loadModelFromHF(model.wasm.repo, model.wasm.file, {
-    n_ctx: model.n_ctx ?? 8192,   // RAG prompts are large; default wllama n_ctx is too small
-    progressCallback: ({ loaded, total }) => {
-      onProg(total ? Math.round((loaded / total) * 100) : 0);
+  txPipeline = await pipeline('text-generation', model.wasm.modelId, {
+    dtype:  model.wasm.dtype,
+    device: 'wasm',
+    progress_callback: ({ status, progress }) => {
+      if (status === 'progress') onProg(Math.round(progress ?? 0));
     },
   });
 }
 
 async function* streamWASM(messages, model) {
-  if (!wllama) throw new Error('WASM model not loaded.');
-  const prompt = formatPrompt(messages, model.template);
-  const samp   = { temp: model.sampling.temp ?? 0.7 };
-  if (model.sampling.top_p != null) samp.top_p = model.sampling.top_p;
+  if (!txPipeline) throw new Error('WASM model not loaded.');
 
-  // Use wllama's native stream:true API (AsyncIterable<CompletionChunk>)
-  // chunk.currentText is accumulated — compute delta from previous length
-  const stream = await wllama.createCompletion(prompt, {
-    nPredict:    1024,
-    stopStrings: model.stops,
-    sampling:    samp,
-    stream:      true,
+  // Bridge Transformers.js TextStreamer callback → async generator
+  const queue = [];
+  let streamDone = false;
+  let resolveWait = null;
+  const notify = () => { if (resolveWait) { resolveWait(); resolveWait = null; } };
+
+  const streamer = new TextStreamer(txPipeline.tokenizer, {
+    skip_prompt:        true,
+    skip_special_tokens: true,
+    callback_function:  text => { queue.push(text); notify(); },
   });
 
-  let prevLen = 0;
-  for await (const chunk of stream) {
-    const delta = chunk.currentText.slice(prevLen);
-    prevLen = chunk.currentText.length;
-    if (delta) yield delta;
+  const temp = model.sampling?.temp ?? 0.7;
+  txPipeline(messages, {
+    max_new_tokens: 1024,
+    temperature:    temp,
+    top_p:          model.sampling?.top_p ?? 1.0,
+    do_sample:      temp > 0,
+    streamer,
+  }).then(() => { streamDone = true; notify(); });
+
+  while (true) {
+    if (queue.length > 0)  { yield queue.shift(); }
+    else if (streamDone)   { break; }
+    else { await new Promise(r => { resolveWait = r; }); }
   }
 }
 
@@ -598,7 +513,7 @@ async function* streamWebGPU(messages, model) {
   const opts = { temperature: model.sampling.temp ?? 0.7 };
   if (model.sampling.top_p != null) opts.top_p = model.sampling.top_p;
   const stream = await webllmEngine.chat.completions.create({
-    messages, stream: true, stop: model.stops, ...opts,
+    messages, stream: true, ...opts,
   });
   for await (const chunk of stream) {
     const delta = chunk.choices[0]?.delta?.content;
@@ -664,14 +579,30 @@ function updateBackendBadge(backend) {
 }
 
 // ── URL proxy ─────────────────────────────────────────────────────────────
+// When running locally (Python server), use the FastAPI /api/proxy endpoint.
+// When hosted on GitHub Pages (or any static host), fall back to allorigins.win.
+const _useLocalProxy = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
 async function fetchURL(url) {
-  const r = await fetch('/api/proxy', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
-  });
+  if (_useLocalProxy) {
+    const r = await fetch('/api/proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    if (!r.ok) throw new Error(`Proxy error ${r.status}`);
+    return r.json();
+  }
+  // Public CORS proxy — returns { contents, status: { url, content_type, http_code } }
+  const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
   if (!r.ok) throw new Error(`Proxy error ${r.status}`);
-  return r.json();
+  const data = await r.json();
+  return {
+    url:          data.status?.url          || url,
+    status:       data.status?.http_code    || 200,
+    content_type: data.status?.content_type || '',
+    text:         data.contents             || '',
+  };
 }
 
 // ── Text utilities ────────────────────────────────────────────────────────
@@ -1162,7 +1093,7 @@ function waitForEmbedder() {
 async function autoRun(targetUrl) {
   try {
     // 1. Pre-select the model in the dropdown
-    document.getElementById('llm-select').value = 'qwen3-0.6b-q4';
+    document.getElementById('llm-select').value = 'qwen3-0.6b';
     toast('Auto mode: waiting for embedder…');
 
     // 2. Wait for the embedding model to finish downloading
@@ -1170,7 +1101,7 @@ async function autoRun(targetUrl) {
 
     // 3. Load the LLM
     toast('Auto mode: loading Qwen3-0.6B…');
-    await initModel('qwen3-0.6b-q4');
+    await initModel('qwen3-0.6b');
 
     // 4. Ingest the blog
     toast('Auto mode: ingesting blog…');

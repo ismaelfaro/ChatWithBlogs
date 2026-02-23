@@ -1,10 +1,9 @@
-# ChatMyIdeas — Browser Local
+# ChatWithBlogs — Browser Local
 
-> **Branch:** `browser-local`
 > All AI runs inside the browser — no Ollama, no Python vector store, no GPU server needed.
 
 Turn any blog into a conversational digital twin of its author.
-Embeddings and LLM inference happen entirely in your browser via **WebAssembly**. The Python server only proxies external URLs to bypass CORS.
+Embeddings and LLM inference happen entirely in your browser via **Transformers.js / ONNX Runtime Web**. The Python server only proxies external URLs to bypass CORS.
 
 ---
 
