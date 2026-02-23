@@ -59,6 +59,10 @@
       border: 1px solid var(--success); color: var(--success); background: var(--surface2);
       transition: color 0.3s, border-color 0.3s;
     }
+    /* Controls panel: inline flex on desktop */
+    #mb-panel { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    /* Mobile toggle: hidden on desktop */
+    #mb-toggle { display: none; }
 
     /* ── Header ─────────────────────────────────────────────────────────────── */
     header {
@@ -347,15 +351,46 @@
         padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
       }
 
-      /* Model bar: compact, safe-area-aware */
+      /* Model bar: status row + expandable controls */
       #model-bar {
-        padding: 6px 12px;
-        padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
-        gap: 5px 10px;
+        flex-wrap: wrap; align-items: center;
+        padding: 7px 12px;
+        padding-bottom: calc(7px + env(safe-area-inset-bottom, 0px));
+        gap: 4px 8px;
       }
-      .mb-sep    { display: none; }
-      #llm-bar   { width: 80px; }
-      #backend-badge { margin-left: 0; font-size: 0.6rem; }
+      /* Status row items */
+      .mb-sep          { display: none; }
+      #backend-badge   { margin-left: 0; font-size: 0.6rem; flex-shrink: 0; }
+      #llm-status-inline { font-size: 0.72rem; flex: 1; min-width: 0;
+                           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      /* Toggle button */
+      #mb-toggle {
+        display: inline-flex; align-items: center; gap: 4px;
+        margin-left: auto; padding: 4px 10px; border-radius: 6px;
+        background: var(--surface2); border: 1px solid var(--border);
+        color: var(--text-muted); cursor: pointer; font-size: 0.72rem; font-weight: 600;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #mb-toggle.open { border-color: var(--accent); color: var(--accent); }
+
+      /* Controls panel — hidden until toggled */
+      #mb-panel {
+        display: none; width: 100%; flex-direction: column;
+        gap: 10px; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 2px;
+      }
+      #mb-panel.open { display: flex; }
+      .mb-sep-dk { display: none; }
+
+      /* Full-width selects inside panel */
+      #mb-panel .mb-item { align-items: center; gap: 8px; width: 100%; }
+      #mb-panel .mb-label { min-width: 54px; flex-shrink: 0; }
+      #mb-panel .llm-select { flex: 1; max-width: none; width: 100%; font-size: 16px; }
+      #mb-panel #load-llm-btn { flex-shrink: 0; min-height: 40px; }
+      #mb-panel #llm-prog-wrap { gap: 6px; }
+      #mb-panel #llm-bar { width: 80px; }
+      /* LLM status inside panel (desktop shows it inline there) */
+      #mb-panel #llm-status { display: none; }
 
       /* Toast above model bar with safe area */
       #toast {
@@ -424,47 +459,56 @@
 
 <!-- ── Model bar (status bar) ─────────────────────────────────────────────── -->
 <div id="model-bar">
+  <!-- Always-visible status row -->
   <div class="mb-item">
     <span class="mb-label">Embedder</span>
     <span class="mb-status" id="embed-status">starting…</span>
   </div>
   <div class="mb-sep"></div>
-  <div class="mb-item">
-    <span class="mb-label">Backend</span>
-    <select class="llm-select" id="backend-select">
-      <option value="auto">Auto (WebGPU if available)</option>
-      <option value="wasm">WebAssembly (all browsers)</option>
-      <option value="webgpu">WebGPU (Chrome / Edge)</option>
-    </select>
-  </div>
-  <div class="mb-sep"></div>
-  <div class="mb-item">
-    <span class="mb-label">Model</span>
-    <select class="llm-select" id="llm-select">
-      <optgroup label="── WebGPU + WASM ──">
-        <option value="qwen3-0.6b" selected>Qwen3-0.6B (~350 MB) · WASM+GPU</option>
-        <option value="qwen3-1.7b">Qwen3-1.7B (~950 MB) · WASM+GPU</option>
-        <option value="gemma2-2b">Gemma 2 2B (1.71 GB) · GPU only</option>
-      </optgroup>
-      <optgroup label="── WASM only ──">
-        <option value="smollm2-135m">SmolLM2 135M (~90 MB) · WASM</option>
-        <option value="smollm2-360m">SmolLM2 360M (~210 MB) · WASM</option>
-        <option value="smollm2-1.7b">SmolLM2 1.7B (~1 GB) · WASM</option>
-        <option value="gemma3-270m">Gemma 3 270M (~260 MB) · WASM</option>
-        <option value="lfm2-350m">LFM2 350M (~220 MB) · WASM</option>
-        <option value="lfm2-1.2b">LFM2 1.2B (~750 MB) · WASM</option>
-        <option value="granite4-350m">Granite 4.0 350M (~350 MB) · WASM</option>
-        <option value="granite4-1b">Granite 4.0 1B (~700 MB) · WASM</option>
-      </optgroup>
-    </select>
-    <button class="btn btn-sm btn-primary" id="load-llm-btn">Load</button>
-    <div id="llm-prog-wrap">
-      <div id="llm-bar"><div id="llm-bar-fill"></div></div>
-      <span id="llm-pct">0%</span>
-    </div>
-    <span class="mb-status" id="llm-status">not loaded</span>
-  </div>
+  <span class="mb-status" id="llm-status-inline"></span>
   <span id="backend-badge">⚙ WebAssembly · all browsers</span>
+  <!-- ⚙ toggle: mobile only -->
+  <button id="mb-toggle" aria-label="Model settings">⚙ Model</button>
+
+  <!-- Controls panel: inline on desktop, expandable on mobile -->
+  <div id="mb-panel">
+    <div class="mb-sep mb-sep-dk"></div>
+    <div class="mb-item">
+      <span class="mb-label">Backend</span>
+      <select class="llm-select" id="backend-select">
+        <option value="auto">Auto (WebGPU if available)</option>
+        <option value="wasm">WebAssembly (all browsers)</option>
+        <option value="webgpu">WebGPU (Chrome / Edge)</option>
+      </select>
+    </div>
+    <div class="mb-sep mb-sep-dk"></div>
+    <div class="mb-item">
+      <span class="mb-label">Model</span>
+      <select class="llm-select" id="llm-select">
+        <optgroup label="── WebGPU + WASM ──">
+          <option value="qwen3-0.6b" selected>Qwen3-0.6B (~350 MB) · WASM+GPU</option>
+          <option value="qwen3-1.7b">Qwen3-1.7B (~950 MB) · WASM+GPU</option>
+          <option value="gemma2-2b">Gemma 2 2B (1.71 GB) · GPU only</option>
+        </optgroup>
+        <optgroup label="── WASM only ──">
+          <option value="smollm2-135m">SmolLM2 135M (~90 MB) · WASM</option>
+          <option value="smollm2-360m">SmolLM2 360M (~210 MB) · WASM</option>
+          <option value="smollm2-1.7b">SmolLM2 1.7B (~1 GB) · WASM</option>
+          <option value="gemma3-270m">Gemma 3 270M (~260 MB) · WASM</option>
+          <option value="lfm2-350m">LFM2 350M (~220 MB) · WASM</option>
+          <option value="lfm2-1.2b">LFM2 1.2B (~750 MB) · WASM</option>
+          <option value="granite4-350m">Granite 4.0 350M (~350 MB) · WASM</option>
+          <option value="granite4-1b">Granite 4.0 1B (~700 MB) · WASM</option>
+        </optgroup>
+      </select>
+      <button class="btn btn-sm btn-primary" id="load-llm-btn">Load</button>
+      <div id="llm-prog-wrap">
+        <div id="llm-bar"><div id="llm-bar-fill"></div></div>
+        <span id="llm-pct">0%</span>
+      </div>
+      <span class="mb-status" id="llm-status">not loaded</span>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -985,6 +1029,11 @@ function toast(msg, type = '') {
 function setStatus(id, txt, cls = '') {
   const el = document.getElementById(id === 'embed' ? 'embed-status' : 'llm-status');
   el.textContent = txt; el.className = `mb-status ${cls}`;
+  // Mirror LLM status to the always-visible inline span (used on mobile status row)
+  if (id !== 'embed') {
+    const inline = document.getElementById('llm-status-inline');
+    if (inline) { inline.textContent = txt; inline.className = `mb-status ${cls}`; }
+  }
 }
 function setIngestProg(ratio, msg) {
   document.getElementById('ingest-prog').style.display = '';
@@ -1289,6 +1338,12 @@ async function boot() {
     try {
       await initModel(modelId);
       toast(`${activeModel.label} ready (${activeBackend === 'webgpu' ? 'WebGPU' : 'WASM'})`, 'success');
+      // Auto-close model panel on mobile after successful load
+      if (window.matchMedia('(max-width: 767px)').matches) {
+        document.getElementById('mb-panel').classList.remove('open');
+        const tog = document.getElementById('mb-toggle');
+        tog.classList.remove('open'); tog.textContent = '⚙ Model';
+      }
     } catch (err) {
       const msg = err?.message || String(err);
       setStatus('llm', 'Error: ' + msg, 'err');
@@ -1307,6 +1362,15 @@ async function boot() {
   // Mobile tab navigation
   document.getElementById('mob-tab-blogs').addEventListener('click', () => mobSwitchTo('blogs'));
   document.getElementById('mob-tab-chat').addEventListener('click',  () => mobSwitchTo('chat'));
+
+  // Mobile model panel toggle
+  document.getElementById('mb-toggle').addEventListener('click', () => {
+    const panel  = document.getElementById('mb-panel');
+    const toggle = document.getElementById('mb-toggle');
+    const open   = panel.classList.toggle('open');
+    toggle.classList.toggle('open', open);
+    toggle.textContent = open ? '✕ Close' : '⚙ Model';
+  });
 
   // Auto-run when ?url= is present in the query string
   const autoUrl = new URLSearchParams(window.location.search).get('url');
