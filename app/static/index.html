@@ -412,7 +412,7 @@
 <header>
   <div>
     <div class="logo">Chat<span>WithBlogs</span> <span class="badge">Browser Local</span></div>
-    <div class="header-sub">AI runs in your browser via WebAssembly or WebGPU — nothing leaves your machine</div>
+    <div class="header-sub">AI runs in your browser via WebAssembly or WebGPU (Chrome, Edge, Safari) — nothing leaves your machine</div>
   </div>
 </header>
 
@@ -478,7 +478,7 @@
       <select class="llm-select" id="backend-select">
         <option value="auto">Auto (WebGPU if available)</option>
         <option value="wasm">WebAssembly (all browsers)</option>
-        <option value="webgpu">WebGPU (Chrome / Edge)</option>
+        <option value="webgpu">WebGPU (Chrome / Edge / Safari)</option>
       </select>
     </div>
     <div class="mb-sep mb-sep-dk"></div>
@@ -488,17 +488,17 @@
         <optgroup label="── WebGPU + WASM ──">
           <option value="qwen3-0.6b" selected>Qwen3-0.6B (~350 MB) · WASM+GPU</option>
           <option value="qwen3-1.7b">Qwen3-1.7B (~950 MB) · WASM+GPU</option>
-          <option value="gemma2-2b">Gemma 2 2B (1.71 GB) · GPU only</option>
+          <option value="gemma2-2b">Gemma 2 2B (1.71 GB) · MLC GPU only</option>
         </optgroup>
-        <optgroup label="── WASM only ──">
-          <option value="smollm2-135m">SmolLM2 135M (~90 MB) · WASM</option>
-          <option value="smollm2-360m">SmolLM2 360M (~210 MB) · WASM</option>
-          <option value="smollm2-1.7b">SmolLM2 1.7B (~1 GB) · WASM</option>
-          <option value="gemma3-270m">Gemma 3 270M (~260 MB) · WASM</option>
-          <option value="lfm2-350m">LFM2 350M (~220 MB) · WASM</option>
-          <option value="lfm2-1.2b">LFM2 1.2B (~750 MB) · WASM</option>
-          <option value="granite4-350m">Granite 4.0 350M (~350 MB) · WASM</option>
-          <option value="granite4-1b">Granite 4.0 1B (~700 MB) · WASM</option>
+        <optgroup label="── WASM / ONNX WebGPU ──">
+          <option value="smollm2-135m">SmolLM2 135M (~90 MB) · WASM+GPU</option>
+          <option value="smollm2-360m">SmolLM2 360M (~210 MB) · WASM+GPU</option>
+          <option value="smollm2-1.7b">SmolLM2 1.7B (~1 GB) · WASM+GPU</option>
+          <option value="gemma3-270m">Gemma 3 270M (~260 MB) · WASM+GPU</option>
+          <option value="lfm2-350m">LFM2 350M (~220 MB) · WASM+GPU</option>
+          <option value="lfm2-1.2b">LFM2 1.2B (~750 MB) · WASM+GPU</option>
+          <option value="granite4-350m">Granite 4.0 350M (~350 MB) · WASM+GPU</option>
+          <option value="granite4-1b">Granite 4.0 1B (~700 MB) · WASM+GPU</option>
         </optgroup>
       </select>
       <button class="btn btn-sm btn-primary" id="load-llm-btn">Load</button>
@@ -608,6 +608,9 @@ const MAX_ARTICLES  = 60;
 // WebGPU availability (checked once at startup)
 const hasWebGPU = !!(typeof navigator !== 'undefined' && navigator.gpu);
 
+// Safari detection — uses ONNX WebGPU instead of WebLLM/MLC (Metal-based WebGPU)
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
 // ── Mobile device detection ─────────────────────────────────────────────────
 // Combines UA string check with touch + viewport heuristic for robustness
 const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -685,8 +688,9 @@ let embedder     = null;   // Transformers.js pipeline (embeddings, main thread)
 let wasmWorker   = null;   // Web Worker running the WASM LLM pipeline
 let webllmEngine = null;   // WebLLM MLCEngine
 let webllmLib    = null;   // WebLLM module (lazy-loaded on first GPU use)
+let txGpuPipeline= null;   // Transformers.js ONNX WebGPU pipeline (Safari-compatible)
 let activeModel  = null;   // currently loaded MODEL_LIST entry
-let activeBackend= null;   // 'wasm' | 'webgpu'
+let activeBackend= null;   // 'wasm' | 'webgpu' | 'txwebgpu'
 let db           = null;
 let activeBlogId = null;
 let history      = [];
@@ -832,6 +836,55 @@ async function* streamWASM(messages, model) {
   if (genErr) throw genErr;
 }
 
+// ── ONNX WebGPU backend (Transformers.js) ─────────────────────────────────
+// Uses the same ONNX models as the WASM backend but schedules computation on
+// the GPU via ONNX Runtime Web WebGPU EP.  GPU ops are truly async, so the
+// main thread is not blocked.  Works on Safari 17+ (Metal), Chrome, Edge.
+async function initTransformersGPU(model, onProg) {
+  if (!model.wasm) throw new Error(
+    `${model.label} has no ONNX model — cannot use ONNX WebGPU. Choose a different model.`);
+  if (txGpuPipeline) { try { txGpuPipeline.dispose?.(); } catch {} txGpuPipeline = null; }
+  setStatus('llm', 'Initialising ONNX WebGPU…');
+  txGpuPipeline = await pipeline('text-generation', model.wasm.modelId, {
+    dtype:   model.wasm.dtype,
+    device:  'webgpu',
+    progress_callback: ({ status, progress }) => {
+      if (status === 'progress') onProg(Math.round(progress ?? 0));
+    },
+  });
+}
+
+async function* streamTransformersGPU(messages, model) {
+  if (!txGpuPipeline) throw new Error('ONNX WebGPU model not loaded.');
+
+  // Same queue/notify pattern as streamWASM — pipeline runs async on GPU
+  const queue = []; let done = false, genErr = null; let resolveWait = null;
+  const notify = () => { if (resolveWait) { resolveWait(); resolveWait = null; } };
+
+  const streamer = new TextStreamer(txGpuPipeline.tokenizer, {
+    skip_prompt: true, skip_special_tokens: true,
+    callback_function: text => { queue.push(text); notify(); },
+  });
+
+  const temp = model.sampling?.temp ?? 0.7;
+  // Fire pipeline — GPU compute is async; main thread stays responsive
+  txGpuPipeline(messages, {
+    max_new_tokens: isMobile ? 512 : 1024,
+    temperature: temp,
+    top_p: model.sampling?.top_p ?? 1.0,
+    do_sample: temp > 0,
+    streamer,
+  }).then(() => { done = true; notify(); })
+    .catch(err => { genErr = new Error(err?.message || String(err)); done = true; notify(); });
+
+  while (true) {
+    if (queue.length > 0) { yield queue.shift(); }
+    else if (done)        { break; }
+    else { await new Promise(r => { resolveWait = r; }); }
+  }
+  if (genErr) throw genErr;
+}
+
 // ── WebGPU backend (WebLLM / MLC) ─────────────────────────────────────────
 async function initWebGPU(model, onProg) {
   if (!webllmLib) {
@@ -858,16 +911,37 @@ async function* streamWebGPU(messages, model) {
 }
 
 // ── Unified model management ───────────────────────────────────────────────
+function backendLabel(backend) {
+  if (backend === 'webgpu')   return 'WebGPU';
+  if (backend === 'txwebgpu') return 'ONNX WebGPU';
+  return 'WASM';
+}
+
 function resolveBackend(model) {
   const pref = document.getElementById('backend-select').value;
   if (pref === 'webgpu') {
-    if (!hasWebGPU)    throw new Error('WebGPU is not available in this browser.');
+    if (!hasWebGPU) throw new Error('WebGPU is not available in this browser.');
+    // Safari uses ONNX WebGPU (Transformers.js) instead of WebLLM/MLC
+    if (isSafari) {
+      if (!model.wasm) throw new Error(
+        `${model.label} has no ONNX model and cannot run on Safari WebGPU. Choose a different model.`);
+      return 'txwebgpu';
+    }
     if (!model.webgpu) throw new Error(`${model.label} is WASM-only. Switch backend to WebAssembly.`);
     return 'webgpu';
   }
-  if (pref === 'wasm') return 'wasm';
-  // auto: prefer WebGPU when available and model supports it
-  return (hasWebGPU && model.webgpu) ? 'webgpu' : 'wasm';
+  if (pref === 'wasm') {
+    if (!model.wasm) throw new Error(`${model.label} requires WebGPU — switch backend to WebGPU.`);
+    return 'wasm';
+  }
+  // auto: pick the best backend for the current browser + model combination
+  if (hasWebGPU) {
+    if (isSafari  && model.wasm)   return 'txwebgpu'; // Safari: ONNX WebGPU
+    if (!isSafari && model.webgpu) return 'webgpu';   // Chrome/Edge: WebLLM
+  }
+  if (!model.wasm) throw new Error(
+    `${model.label} requires WebGPU — enable WebGPU or choose a different model.`);
+  return 'wasm';
 }
 
 async function initModel(modelId) {
@@ -894,27 +968,33 @@ async function initModel(modelId) {
     setStatus('llm', `Downloading… ${pct}%`);
   };
 
-  if (backend === 'webgpu') await initWebGPU(model, onProg);
-  else                      await initWASM(model, onProg);
+  if      (backend === 'webgpu')   await initWebGPU(model, onProg);
+  else if (backend === 'txwebgpu') await initTransformersGPU(model, onProg);
+  else                             await initWASM(model, onProg);
 
   activeModel   = model;
   activeBackend = backend;
   document.getElementById('llm-prog-wrap').style.display = 'none';
   document.getElementById('load-llm-btn').disabled = false;
-  setStatus('llm', `${model.label} · ${backend === 'webgpu' ? 'WebGPU' : 'WASM'}`, 'ok');
+  setStatus('llm', `${model.label} · ${backendLabel(backend)}`, 'ok');
   updateBackendBadge(backend);
 }
 
 async function* streamModel(messages) {
   if (!activeModel) throw new Error('No model loaded — click Load in the toolbar.');
-  if (activeBackend === 'webgpu') yield* streamWebGPU(messages, activeModel);
-  else                            yield* streamWASM(messages, activeModel);
+  if      (activeBackend === 'webgpu')   yield* streamWebGPU(messages, activeModel);
+  else if (activeBackend === 'txwebgpu') yield* streamTransformersGPU(messages, activeModel);
+  else                                   yield* streamWASM(messages, activeModel);
 }
 
 function updateBackendBadge(backend) {
   const b = document.getElementById('backend-badge');
   if (backend === 'webgpu') {
     b.textContent = '⚡ WebGPU · Chrome/Edge';
+    b.style.borderColor = 'var(--warn)';
+    b.style.color       = 'var(--warn)';
+  } else if (backend === 'txwebgpu') {
+    b.textContent = '⚡ ONNX WebGPU · Safari';
     b.style.borderColor = 'var(--warn)';
     b.style.color       = 'var(--warn)';
   } else {
@@ -1417,14 +1497,20 @@ async function handleIngest() {
 async function boot() {
   db = await openDB();
 
-  // Disable WebGPU option if not available; update badge if it is
+  // Disable WebGPU option if not available; update badge / label if it is
   const gpuOpt = document.querySelector('#backend-select [value="webgpu"]');
   if (!hasWebGPU) {
     gpuOpt.disabled = true;
     gpuOpt.textContent += ' (unavailable)';
   } else {
     const badge = document.getElementById('backend-badge');
-    badge.textContent = '⚡ WebGPU detected';
+    if (isSafari) {
+      // Safari uses ONNX WebGPU via Transformers.js
+      gpuOpt.textContent = 'WebGPU (Safari · ONNX)';
+      badge.textContent = '⚡ ONNX WebGPU · Safari';
+    } else {
+      badge.textContent = '⚡ WebGPU detected';
+    }
     badge.style.borderColor = 'var(--warn)';
     badge.style.color       = 'var(--warn)';
   }
@@ -1464,7 +1550,7 @@ async function boot() {
     const modelId = document.getElementById('llm-select').value;
     try {
       await initModel(modelId);
-      toast(`${activeModel.label} ready (${activeBackend === 'webgpu' ? 'WebGPU' : 'WASM'})`, 'success');
+      toast(`${activeModel.label} ready (${backendLabel(activeBackend)})`, 'success');
       // Auto-close model panel on mobile after successful load
       if (window.matchMedia('(max-width: 767px)').matches) {
         document.getElementById('mb-panel').classList.remove('open');
