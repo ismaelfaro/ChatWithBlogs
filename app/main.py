@@ -18,10 +18,11 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 
 logging.basicConfig(
@@ -42,6 +43,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class _COOPCOEPMiddleware(BaseHTTPMiddleware):
+    """Add COOP/COEP headers so SharedArrayBuffer is available in the browser.
+
+    SharedArrayBuffer is required for wllama's multi-threaded WASM backend.
+    COEP uses 'credentialless' instead of 'require-corp' so cross-origin
+    resources fetched by the proxy don't need to opt-in with CORP headers.
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
+        return response
+
+
+app.add_middleware(_COOPCOEPMiddleware)
 
 _ALLOWED_SCHEMES = {"http", "https"}
 _REQUEST_HEADERS = {
