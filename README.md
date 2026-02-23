@@ -2,8 +2,15 @@
 
 > All AI runs inside the browser — no Ollama, no Python vector store, no GPU server needed.
 
-Turn any blog into a conversational digital twin of its author.
+Turn any blog/url into a conversational experience.
 Embeddings and LLM inference happen entirely in your browser via **Transformers.js v3 / ONNX Runtime Web**. The Python server only proxies external URLs to bypass CORS (not needed when using the GitHub Pages hosted version).
+
+## Run now
+
+Example how run it, passing a url:
+
+https://ismaelfaro.github.io/ChatWithBlogs/app/static/?url=https://huggingface.co/blog/openenv-turing
+
 
 ---
 
@@ -99,8 +106,6 @@ This is useful for sharing a direct link that drops someone straight into a conv
 | LFM2.5-1.2B Instruct | ~700 MB | WASM | Liquid AI, fast RAG |
 | LFM2.5-1.2B Thinking | ~700 MB | WASM | Liquid AI, reasoning variant |
 | Gemma 3 270M | ~260 MB | WASM | Tiny, surprisingly capable |
-| Granite 4.0 350M | ~350 MB | WASM | IBM Granite 4.0 compact |
-| Granite 4.0 1B | ~700 MB | WASM | IBM Granite 4.0 base |
 
 Models with **WASM + WebGPU** use WebGPU automatically when available (Chrome/Edge), falling back to WASM otherwise. Switch manually with the backend selector in the toolbar.
 

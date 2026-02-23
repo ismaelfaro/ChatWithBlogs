@@ -361,11 +361,10 @@
         <option value="gemma2-2b">Gemma 2 2B (1.71 GB) · GPU only</option>
       </optgroup>
       <optgroup label="── WASM only ──">
-        <option value="lfm2.5-1.2b">LFM2.5-1.2B Instruct (~700 MB) · WASM</option>
-        <option value="lfm2.5-1.2b-thinking">LFM2.5-1.2B Thinking (~700 MB) · WASM</option>
+        <option value="smollm2-135m">SmolLM2 135M (~90 MB) · WASM</option>
+        <option value="smollm2-360m">SmolLM2 360M (~210 MB) · WASM</option>
+        <option value="smollm2-1.7b">SmolLM2 1.7B (~1 GB) · WASM</option>
         <option value="gemma3-270m">Gemma 3 270M (~260 MB) · WASM</option>
-        <option value="granite4-350m">Granite 4.0 350M (~350 MB) · WASM</option>
-        <option value="granite4-1b">Granite 4.0 1B (~700 MB) · WASM</option>
       </optgroup>
     </select>
     <button class="btn btn-sm btn-primary" id="load-llm-btn">Load</button>
@@ -428,25 +427,21 @@ const MODEL_LIST = [
     webgpu:{mlcId:'gemma-2-2b-it-q4f16_1-MLC'} },
 
   // ── WASM only (Transformers.js ONNX) ──────────────────────────────────
-  { id:'lfm2.5-1.2b',   label:'LFM2.5-1.2B Instruct', size:'~700 MB',
+  { id:'smollm2-135m',  label:'SmolLM2 135M',          size:'~90 MB',
     sampling:{temp:0.7,top_p:0.9},
-    wasm: {modelId:'LiquidAI/LFM2.5-1.2B-Instruct-ONNX', dtype:'q4'} },
+    wasm: {modelId:'HuggingFaceTB/SmolLM2-135M-Instruct', dtype:'q4'} },
 
-  { id:'lfm2.5-1.2b-thinking', label:'LFM2.5-1.2B Thinking', size:'~700 MB',
+  { id:'smollm2-360m',  label:'SmolLM2 360M',          size:'~210 MB',
     sampling:{temp:0.7,top_p:0.9},
-    wasm: {modelId:'LiquidAI/LFM2.5-1.2B-Thinking-ONNX',  dtype:'q4'} },
+    wasm: {modelId:'HuggingFaceTB/SmolLM2-360M-Instruct', dtype:'q4'} },
 
-  { id:'gemma3-270m',   label:'Gemma 3 270M',         size:'~260 MB',
+  { id:'smollm2-1.7b',  label:'SmolLM2 1.7B',          size:'~1 GB',
+    sampling:{temp:0.7,top_p:0.9},
+    wasm: {modelId:'HuggingFaceTB/SmolLM2-1.7B-Instruct', dtype:'q4'} },
+
+  { id:'gemma3-270m',   label:'Gemma 3 270M',          size:'~260 MB',
     sampling:{temp:1.0,top_p:0.9},
     wasm: {modelId:'onnx-community/gemma-3-270m-it-ONNX', dtype:'fp32'} },
-
-  { id:'granite4-350m', label:'Granite 4.0 350M',      size:'~350 MB',
-    sampling:{temp:0.7,top_p:0.9},
-    wasm: {modelId:'onnx-community/granite-4.0-h-350m-ONNX', dtype:'q4'} },
-
-  { id:'granite4-1b',   label:'Granite 4.0 1B',        size:'~700 MB',
-    sampling:{temp:0.7,top_p:0.9},
-    wasm: {modelId:'onnx-community/granite-4.0-h-1b-ONNX',   dtype:'q4'} },
 ];
 
 const MODEL_MAP = Object.fromEntries(MODEL_LIST.map(m => [m.id, m]));
