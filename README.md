@@ -62,8 +62,30 @@ open http://localhost:8000
 2. **Pick a model** from the toolbar dropdown and click **Load**.
    - First load downloads the ONNX model weights (cached by the browser).
    - WebGPU models are faster on Chrome/Edge; WASM works on all browsers.
-3. **Paste a blog URL** and click **Add Blog** — or pass `?url=<blog-url>` to auto-run.
+3. **Paste a blog URL** and click **Add Blog**.
 4. **Chat** — responses stream token by token. Thinking blocks (`<think>…</think>`) are shown live then collapsed into a summary.
+
+---
+
+## Load a blog via URL parameter
+
+Append `?url=<blog-url>` to the app address to fully automate the flow — no clicks needed:
+
+```
+https://<your-github-pages-url>/?url=https://example.com/blog
+```
+
+```
+http://localhost:8000/?url=https://example.com/blog
+```
+
+What happens automatically:
+1. Waits for the embedding model to finish loading
+2. Loads **Qwen3-0.6B** (WASM or WebGPU depending on your browser)
+3. Fetches and ingests the blog
+4. Sends an initial summary query
+
+This is useful for sharing a direct link that drops someone straight into a conversation about a specific blog.
 
 ---
 
