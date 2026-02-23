@@ -546,50 +546,50 @@ marked.setOptions({ breaks: true, gfm: true });
 
 const MODEL_LIST = [
   // ── WebGPU + WASM (Transformers.js ONNX) ──────────────────────────────
-  { id:'qwen3-0.6b',    label:'Qwen3-0.6B',          size:'~350 MB',
+  { id:'qwen3-0.6b',    label:'Qwen3-0.6B',          size:'~350 MB',  mobileSizeMB:  350,
     sampling:{temp:0.7,top_p:0.8},
     wasm:  {modelId:'onnx-community/Qwen3-0.6B-ONNX',  dtype:'q4f16'},
     webgpu:{mlcId:'Qwen3-0.6B-q4f16_1-MLC'} },
 
-  { id:'qwen3-1.7b',    label:'Qwen3-1.7B',          size:'~950 MB',
+  { id:'qwen3-1.7b',    label:'Qwen3-1.7B',          size:'~950 MB',  mobileSizeMB:  950,
     sampling:{temp:0.7,top_p:0.8},
     wasm:  {modelId:'onnx-community/Qwen3-1.7B-ONNX',  dtype:'q4f16'},
     webgpu:{mlcId:'Qwen3-1.7B-q4f16_1-MLC'} },
 
-  { id:'gemma2-2b',     label:'Gemma 2 2B',          size:'1.71 GB',
+  { id:'gemma2-2b',     label:'Gemma 2 2B',          size:'1.71 GB',  mobileSizeMB: 1710,
     sampling:{temp:1.0,top_p:0.9},
     webgpu:{mlcId:'gemma-2-2b-it-q4f16_1-MLC'} },
 
   // ── WASM only (Transformers.js ONNX) ──────────────────────────────────
-  { id:'smollm2-135m',  label:'SmolLM2 135M',          size:'~90 MB',
+  { id:'smollm2-135m',  label:'SmolLM2 135M',        size:'~90 MB',   mobileSizeMB:   90,
     sampling:{temp:0.7,top_p:0.9},
     wasm: {modelId:'HuggingFaceTB/SmolLM2-135M-Instruct', dtype:'q4'} },
 
-  { id:'smollm2-360m',  label:'SmolLM2 360M',          size:'~210 MB',
+  { id:'smollm2-360m',  label:'SmolLM2 360M',        size:'~210 MB',  mobileSizeMB:  210,
     sampling:{temp:0.7,top_p:0.9},
     wasm: {modelId:'HuggingFaceTB/SmolLM2-360M-Instruct', dtype:'q4'} },
 
-  { id:'smollm2-1.7b',  label:'SmolLM2 1.7B',          size:'~1 GB',
+  { id:'smollm2-1.7b',  label:'SmolLM2 1.7B',        size:'~1 GB',    mobileSizeMB: 1000,
     sampling:{temp:0.7,top_p:0.9},
     wasm: {modelId:'HuggingFaceTB/SmolLM2-1.7B-Instruct', dtype:'q4'} },
 
-  { id:'gemma3-270m',   label:'Gemma 3 270M',          size:'~260 MB',
+  { id:'gemma3-270m',   label:'Gemma 3 270M',        size:'~260 MB',  mobileSizeMB:  260,
     sampling:{temp:1.0,top_p:0.9},
     wasm: {modelId:'onnx-community/gemma-3-270m-it-ONNX', dtype:'fp32'} },
 
-  { id:'lfm2-350m',     label:'LFM2 350M',             size:'~220 MB',
+  { id:'lfm2-350m',     label:'LFM2 350M',           size:'~220 MB',  mobileSizeMB:  220,
     sampling:{temp:0.7,top_p:0.9},
     wasm: {modelId:'onnx-community/LFM2-350M-ONNX', dtype:'q4'} },
 
-  { id:'lfm2-1.2b',     label:'LFM2 1.2B',             size:'~750 MB',
+  { id:'lfm2-1.2b',     label:'LFM2 1.2B',           size:'~750 MB',  mobileSizeMB:  750,
     sampling:{temp:0.7,top_p:0.9},
     wasm: {modelId:'onnx-community/LFM2-1.2B-ONNX', dtype:'q4'} },
 
-  { id:'granite4-350m', label:'Granite 4.0 350M',      size:'~350 MB',
+  { id:'granite4-350m', label:'Granite 4.0 350M',    size:'~350 MB',  mobileSizeMB:  350,
     sampling:{temp:0.7,top_p:0.9},
     wasm: {modelId:'onnx-community/granite-4.0-350m-ONNX-web', dtype:'q4'} },
 
-  { id:'granite4-1b',   label:'Granite 4.0 1B',        size:'~700 MB',
+  { id:'granite4-1b',   label:'Granite 4.0 1B',      size:'~700 MB',  mobileSizeMB:  700,
     sampling:{temp:0.7,top_p:0.9},
     wasm: {modelId:'onnx-community/granite-4.0-1b-ONNX-web', dtype:'q4'} },
 ];
@@ -606,6 +606,14 @@ const MAX_ARTICLES  = 60;
 
 // WebGPU availability (checked once at startup)
 const hasWebGPU = !!(typeof navigator !== 'undefined' && navigator.gpu);
+
+// ── Mobile device detection ─────────────────────────────────────────────────
+// Combines UA string check with touch + viewport heuristic for robustness
+const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  || (navigator.maxTouchPoints > 1 && window.matchMedia('(max-width: 767px)').matches);
+
+// Models above this threshold trigger a confirmation prompt on mobile
+const MOBILE_WARN_MB = 500;
 
 // ── Global state ───────────────────────────────────────────────────────────
 let embedder     = null;   // Transformers.js pipeline (embeddings)
@@ -669,6 +677,23 @@ const dbDelIdx = (store, idx, val) => new Promise((res, rej) => {
 async function initEmbedder() {
   env.allowLocalModels = false;
   env.useBrowserCache  = true;
+
+  // ── ONNX Runtime Web configuration ───────────────────────────────────────
+  // numThreads: mobile devices have limited memory bandwidth; 1 thread avoids
+  // contention and OOM crashes. Desktop gets up to 4 threads for throughput.
+  // Wrapped in try/catch because the exact env path may vary between versions.
+  try {
+    const onnxWasm = env.backends?.onnx?.wasm ?? env.backends?.ort?.wasm;
+    if (onnxWasm) {
+      onnxWasm.numThreads = isMobile
+        ? 1
+        : Math.min(4, navigator.hardwareConcurrency || 4);
+      // proxy=false: run ONNX directly (simpler, no SharedArrayBuffer needed
+      // on deployed builds, UI stays responsive via async TextStreamer)
+      onnxWasm.proxy = false;
+    }
+  } catch (_) {}
+
   setStatus('embed', 'Downloading…');
   embedder = await pipeline('feature-extraction', EMBED_MODEL, {
     progress_callback: ({ status, progress, file }) => {
@@ -717,9 +742,11 @@ async function* streamWASM(messages, model) {
     callback_function:  text => { queue.push(text); notify(); },
   });
 
-  const temp = model.sampling?.temp ?? 0.7;
+  const temp      = model.sampling?.temp ?? 0.7;
+  // Limit output length on mobile: reduces peak RAM and avoids browser tab kills
+  const maxTokens = isMobile ? 512 : 1024;
   txPipeline(messages, {
-    max_new_tokens: 1024,
+    max_new_tokens: maxTokens,
     temperature:    temp,
     top_p:          model.sampling?.top_p ?? 1.0,
     do_sample:      temp > 0,
@@ -774,6 +801,16 @@ function resolveBackend(model) {
 async function initModel(modelId) {
   const model = MODEL_MAP[modelId];
   if (!model) throw new Error('Unknown model: ' + modelId);
+
+  // Warn mobile users before loading a model likely to exceed available RAM
+  if (isMobile && model.mobileSizeMB > MOBILE_WARN_MB) {
+    const ok = confirm(
+      `${model.label} (${model.size}) may exceed this device's available memory and crash the browser tab.\n\n` +
+      `For mobile, models under 400 MB are recommended.\n\nContinue anyway?`
+    );
+    if (!ok) return;
+  }
+
   const backend = resolveBackend(model);
 
   document.getElementById('llm-prog-wrap').style.display = 'flex';
@@ -1043,7 +1080,6 @@ function setIngestProg(ratio, msg) {
 
 // ── Mobile tab switching ──────────────────────────────────────────────────
 function mobSwitchTo(tab) {
-  const isMobile = window.matchMedia('(max-width: 767px)').matches;
   if (!isMobile) return;
   const aside    = document.querySelector('aside');
   const chat     = document.getElementById('chat-area');
@@ -1319,6 +1355,26 @@ async function boot() {
     badge.textContent = '⚡ WebGPU detected';
     badge.style.borderColor = 'var(--warn)';
     badge.style.color       = 'var(--warn)';
+  }
+
+  // ── Mobile-specific startup configuration ──────────────────────────────
+  if (isMobile) {
+    // Default to WASM backend — WebGPU on mobile (especially iOS) is unreliable
+    document.getElementById('backend-select').value = 'wasm';
+
+    // Default to the smallest available model to avoid OOM on first use
+    document.getElementById('llm-select').value = 'smollm2-135m';
+
+    // Annotate model <option> labels with mobile suitability hints
+    document.querySelectorAll('#llm-select option[value]').forEach(opt => {
+      const m = MODEL_MAP[opt.value];
+      if (!m) return;
+      if (m.mobileSizeMB > MOBILE_WARN_MB) {
+        opt.textContent = '⚠ ' + opt.textContent;   // large — may crash
+      } else if (m.mobileSizeMB <= 300) {
+        opt.textContent = '★ ' + opt.textContent;   // recommended for mobile
+      }
+    });
   }
 
   // Load existing blogs + chunks into memory
