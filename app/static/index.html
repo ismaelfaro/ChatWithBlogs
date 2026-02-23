@@ -176,6 +176,12 @@
     .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
     .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
     @keyframes bounce { 0%,80%,100%{transform:scale(0.7);opacity:0.5} 40%{transform:scale(1);opacity:1} }
+    @keyframes spin   { to { transform: rotate(360deg); } }
+    .llm-spinner {
+      display: inline-block; width: 13px; height: 13px; vertical-align: middle;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.75s linear infinite;
+    }
 
     .input-row {
       display: flex; gap: 8px; padding: 12px 24px 16px;
@@ -964,11 +970,18 @@ function buildChatUI(b) {
       const textNode = bubble.firstChild;
       let full = '';
 
+      // Show spinner until first token arrives
+      const spinner = document.createElement('span');
+      spinner.className = 'llm-spinner';
+      bubble.insertBefore(spinner, textNode);
+
       for await (const token of streamModel(messages)) {
+        spinner.remove();
         full += token;
         textNode.nodeValue = full;
         msgs.scrollTop = msgs.scrollHeight;
       }
+      spinner.remove(); // no-op if already removed, cleans up on empty response
 
       history.push({ role: 'user',      content: text });
       history.push({ role: 'assistant', content: full });
