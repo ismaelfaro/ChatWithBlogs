@@ -407,6 +407,7 @@ let db           = null;
 let activeBlogId = null;
 let history      = [];
 const memChunks  = new Map();  // blogId → chunk[]
+let _triggerSend = null;   // set by buildChatUI; called by autoRun
 
 // ── IndexedDB ──────────────────────────────────────────────────────────────
 function openDB() {
@@ -930,6 +931,7 @@ function buildChatUI(b) {
   });
   input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
   btn.addEventListener('click', send);
+  _triggerSend = text => { input.value = text; send(); };
 
   async function send() {
     const text = input.value.trim();
@@ -1091,6 +1093,49 @@ async function boot() {
     if (e.key === 'Enter') handleIngest();
   });
   document.getElementById('author-select').addEventListener('change', () => { history = []; });
+
+  // Auto-run when ?url= is present in the query string
+  const autoUrl = new URLSearchParams(window.location.search).get('url');
+  if (autoUrl) autoRun(autoUrl);
+}
+
+// ── Auto-run from URL parameter (?url=https://...) ───────────────────────
+
+function waitForEmbedder() {
+  if (embedder) return Promise.resolve();
+  return new Promise(resolve => {
+    const id = setInterval(() => { if (embedder) { clearInterval(id); resolve(); } }, 200);
+  });
+}
+
+async function autoRun(targetUrl) {
+  try {
+    // 1. Pre-select the model in the dropdown
+    document.getElementById('llm-select').value = 'qwen3-0.6b-q4';
+    toast('Auto mode: waiting for embedder…');
+
+    // 2. Wait for the embedding model to finish downloading
+    await waitForEmbedder();
+
+    // 3. Load the LLM
+    toast('Auto mode: loading Qwen3-0.6B…');
+    await initModel('qwen3-0.6b-q4');
+
+    // 4. Ingest the blog
+    toast('Auto mode: ingesting blog…');
+    const blog = await ingestBlog(targetUrl, (r, m) => setIngestProg(r, m));
+    document.getElementById('ingest-prog').style.display = 'none';
+    await renderBlogList();
+    selectBlog(blog);
+
+    // 5. Fire the summary query once the chat UI is ready
+    toast(`✓ ${blog.articleCount} article(s) loaded — generating summary…`, 'success');
+    await new Promise(r => setTimeout(r, 300)); // let buildChatUI settle
+    _triggerSend?.('What are the main ideas and key topics covered here? Give me a concise summary.');
+  } catch (err) {
+    document.getElementById('ingest-prog').style.display = 'none';
+    toast('Auto mode failed: ' + err.message, 'error');
+  }
 }
 
 boot();
