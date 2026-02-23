@@ -67,13 +67,22 @@ open http://localhost:8000
 3. **Paste a blog URL** and click **Create Twin**.
 4. **Chat** — responses stream token by token from the in-browser LLM.
 
-### Available quantizations (LiquidAI/LFM2-350M-GGUF)
+### Available models
 
-| Quantization | Size | Notes |
-|---|---|---|
-| Q4_K_M | ~229 MB | Default — good balance of size and quality |
-| Q5_K_M | ~260 MB | Slightly better quality |
-| Q8_0   | ~379 MB | Highest quality, largest download |
+| Model | Size | Backend | Notes |
+|---|---|---|---|
+| LFM2-350M · Q4_K_M | 229 MB | WASM | Default — fast RAG, greedy decoding |
+| LFM2-350M · Q5_K_M | 260 MB | WASM | Slightly better quality |
+| LFM2-350M · Q8_0   | 379 MB | WASM | Highest quality LFM2-350M |
+| LFM2-1.2B · Q4_K_M | 731 MB | WASM | Larger LFM2 base |
+| LFM2-1.2B-RAG · Q4_K_M | 731 MB | WASM | RAG-tuned LFM2 1.2B |
+| Gemma 3 270M · Q4_K_M | 253 MB | WASM | Tiny Gemma 3, surprisingly capable |
+| Gemma 2 2B · Q4_K_M | 1.71 GB | WASM + WebGPU | Google, solid reasoning |
+| Granite 4.0 1B (MXFP4) | 1.55 GB | WASM | IBM Granite hybrid quant |
+| Qwen3-0.6B · Q4_K_M | 397 MB | WASM + WebGPU | Alibaba Qwen3, non-thinking mode |
+| Qwen3-1.7B · Q4_K_M | 1.11 GB | WASM + WebGPU | Larger Qwen3, good quality |
+
+Models marked **WASM + WebGPU** can use either backend. On Chrome/Edge with WebGPU, select "Auto" or "WebGPU" in the toolbar for faster inference.
 
 ---
 
@@ -94,8 +103,8 @@ chatmyideas/
 | Layer | Library | Notes |
 |---|---|---|
 | Embeddings | [Transformers.js](https://github.com/xenova/transformers.js) v2 | ONNX, runs in main thread |
-| LLM | [wllama](https://github.com/ngxson/wllama) | llama.cpp → WebAssembly, GGUF from HuggingFace Hub |
-| LLM model | [LiquidAI/LFM2-350M-GGUF](https://huggingface.co/LiquidAI/LFM2-350M-GGUF) | Hybrid architecture, RAG-optimised, greedy decoding |
+| LLM (WASM) | [wllama](https://github.com/ngxson/wllama) | llama.cpp → WebAssembly, GGUF from HuggingFace Hub |
+| LLM (WebGPU) | [WebLLM](https://github.com/mlc-ai/web-llm) | MLC quantised models, GPU accelerated |
 | Vector search | Pure JS cosine similarity | In-memory, O(n) |
 | Persistence | IndexedDB | Chunks + embeddings survive page refresh |
 | Article parsing | [Readability.js](https://github.com/mozilla/readability) | Mozilla's article extractor |
