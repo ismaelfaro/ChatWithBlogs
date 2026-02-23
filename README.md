@@ -1,251 +1,126 @@
-# ChatMyIdeas — Blog Digital Twin
+# ChatWithBlogs — Browser Local
 
-Turn any blog into a conversational digital twin of its author(s).
-ChatMyIdeas fetches all articles, indexes them with local embeddings and a vector database, and lets you chat with the author's ideas via a locally-running LLM.
+> All AI runs inside the browser — no Ollama, no Python vector store, no GPU server needed.
 
-**Everything runs locally — no API keys needed.**
-
----
-
-## Features
-
-- **RSS / HTML ingestion** — tries the feed first, falls back to HTML scraping
-- **Local embeddings** — `sentence-transformers/all-MiniLM-L6-v2` (384-dim, ~90 MB)
-- **Local LLM via Ollama** — any model you have installed (`llama3.2` default)
-- **Pluggable vector store**
-  - `chroma` (default) — persistent SQLite, zero extra services
-  - `redis` — Redis Stack for higher throughput
-- **REST API** — documented at `/docs` (Swagger UI)
-- **Web chat UI** — built-in, served at `/`
-- **Multi-author support** — chat with a specific author or all at once
-- **Conversation history** — multi-turn context sent to the LLM
+Turn any blog into a conversational digital twin of its author.
+Embeddings and LLM inference happen entirely in your browser via **Transformers.js v3 / ONNX Runtime Web**. The Python server only proxies external URLs to bypass CORS (not needed when using the GitHub Pages hosted version).
 
 ---
 
-## Quick Start
-
-### 1. Prerequisites
-
-| Dependency | Install |
-|------------|---------|
-| Python 3.11+ | [python.org](https://www.python.org/downloads/) |
-| Ollama | [ollama.com](https://ollama.com) |
-| A small LLM | `ollama pull llama3.2` |
-
-### 2. Install Python dependencies
-
-```bash
-git clone https://github.com/your-org/chatmyideas.git
-cd chatmyideas
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### 3. Pull the model
-
-```bash
-ollama pull lfm2.5
-```
-
-### 4. Configure (optional)
-
-```bash
-cp .env.example .env
-# Edit .env to change the model, vector store, ports, etc.
-```
-
-### 5. Run
-
-```bash
-python -m uvicorn app.main:app --reload
-```
-
-Open **http://localhost:8000** in your browser.
-
----
-
-## Usage
-
-### Web UI
-
-1. Paste a blog URL (e.g. `https://simonwillison.net`) into the sidebar.
-2. Click **Create Twin** — ChatMyIdeas fetches and indexes all articles.
-3. Select an author (if there are multiple).
-4. Start chatting.
-
-### REST API
-
-```bash
-# Ingest a blog
-curl -X POST http://localhost:8000/api/v1/ingest \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://simonwillison.net"}'
-
-# Chat
-curl -X POST http://localhost:8000/api/v1/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "blog_id": "<id from ingest response>",
-    "message": "What is your take on LLMs?",
-    "history": []
-  }'
-
-# List ingested blogs
-curl http://localhost:8000/api/v1/blogs
-
-# Delete a blog
-curl -X DELETE http://localhost:8000/api/v1/blogs/<blog_id>
-
-# Health check
-curl http://localhost:8000/api/v1/health
-```
-
-Full interactive docs: **http://localhost:8000/docs**
-
----
-
-## Configuration Reference
-
-All settings can be overridden via environment variables or a `.env` file.
-
-| Variable | Default | Description |
-|---|---|---|
-| `VECTOR_STORE` | `chroma` | `chroma` or `redis` |
-| `CHROMA_DB_PATH` | `./data/chroma` | Persistence path for ChromaDB |
-| `REDIS_URL` | `redis://localhost:6379` | Redis connection string |
-| `REDIS_INDEX_NAME` | `chatmyideas_idx` | Redis search index name |
-| `OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
-| `OLLAMA_MODEL` | `llama3.2` | Model name (must be pulled first) |
-| `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Sentence-transformers model |
-| `EMBEDDING_DIMENSION` | `384` | Must match the embedding model |
-| `CHUNK_SIZE` | `500` | Words per chunk |
-| `CHUNK_OVERLAP` | `50` | Overlap between consecutive chunks |
-| `TOP_K_CHUNKS` | `5` | Chunks retrieved per query |
-| `APP_HOST` | `0.0.0.0` | Bind address |
-| `APP_PORT` | `8000` | Port |
-| `DEBUG` | `false` | Enable debug logging and hot reload |
-
-### Recommended small models
-
-```bash
-ollama pull lfm2.5          # Liquid AI LFM 2.5 (default)
-ollama pull llama3.2        # 3B — great balance, ~2 GB
-ollama pull phi3:mini       # 3.8B — fast, low memory
-ollama pull gemma2:2b       # 2B — very small
-```
-
-Set your choice in `.env`:
-```
-OLLAMA_MODEL=lfm2.5
-```
-
-### Using Redis instead of ChromaDB
-
-```bash
-# Start Redis Stack
-docker run -p 6379:6379 redis/redis-stack-server:latest
-
-# Install the redis package
-pip install redis
-
-# Configure
-echo "VECTOR_STORE=redis" >> .env
-echo "REDIS_URL=redis://localhost:6379" >> .env
-```
-
----
-
-## Project Structure
-
-```
-chatmyideas/
-├── app/
-│   ├── api/
-│   │   └── routes.py          # REST endpoints
-│   ├── core/
-│   │   ├── ingestion.py       # RSS + HTML blog fetching
-│   │   ├── rag.py             # RAG pipeline (chunk/embed/retrieve/generate)
-│   │   └── vectorstore/
-│   │       ├── base.py        # Abstract interface
-│   │       ├── chroma.py      # ChromaDB (SQLite) backend
-│   │       └── redis_store.py # Redis Stack backend
-│   ├── models/
-│   │   └── schemas.py         # Pydantic request/response models
-│   ├── static/
-│   │   └── index.html         # Web chat UI
-│   └── main.py                # FastAPI app + lifespan
-├── tests/
-│   ├── conftest.py            # Fixtures (in-memory store, mock embedder)
-│   ├── test_api.py            # API endpoint tests
-│   ├── test_ingestion.py      # Blog ingestion tests
-│   └── test_rag.py            # RAG pipeline tests
-├── config.py                  # Pydantic-settings config
-├── requirements.txt
-├── pyproject.toml
-├── .env.example
-├── LICENSE                    # Apache 2.0
-└── README.md
-```
-
----
-
-## Running Tests
-
-```bash
-pip install -r requirements.txt
-pytest
-```
-
-Run with verbose output:
-
-```bash
-pytest -v
-```
-
-Run a specific module:
-
-```bash
-pytest tests/test_api.py -v
-```
-
-Tests use an **in-memory vector store** and a **mock embedder** — Ollama and ChromaDB are not required to run the suite.
-
----
-
-## How It Works
+## How it works
 
 ```
 Blog URL
    │
-   ▼
- Ingestion (feedparser + trafilatura)
-   │  Articles: {title, content, author, url}
-   ▼
- Chunking  (overlapping word windows)
-   │  Chunks: list[str]
-   ▼
- Embedding  (sentence-transformers, local)
-   │  Vectors: list[float[384]]
-   ▼
- Vector Store  (ChromaDB / Redis)
-   │  Persisted with metadata
-   ▼
+   ▼  (CORS proxy — local FastAPI server or allorigins.win on GitHub Pages)
+ Fetch HTML / RSS
+   │
+   ▼  (browser — Readability.js)
+ Extract article text
+   │
+   ▼  (browser — Transformers.js v3 · all-MiniLM-L6-v2 · ONNX)
+ Chunk + embed  →  IndexedDB (persisted locally)
+   │
  Chat query
-   │
-   ├─ Embed query ──► Similarity search ──► Top-K chunks
-   │
-   └─ Build prompt:
-        System: "You are a digital twin of {author}…\n{retrieved chunks}"
-        History: prior turns
-        User: current message
-   │
-   ▼
- Ollama (local LLM)
-   │
-   ▼
- Response + source citations
+   ├─ Embed query  ──► cosine similarity  ──► top-K chunks
+   └─ Build prompt ("You are a digital twin of …")
+              │
+              ▼  (browser — Transformers.js v3 WASM  or  WebLLM WebGPU)
+           LLM response (streamed token by token, thinking blocks collapsed)
 ```
+
+**Nothing leaves your machine after the initial model download.**
+
+---
+
+## Usage options
+
+### Option A — GitHub Pages (no install required)
+
+Open the hosted version directly in your browser. The CORS proxy is handled automatically via [allorigins.win](https://allorigins.win).
+
+> Enable GitHub Pages in your repo: **Settings → Pages → Source → GitHub Actions**
+
+### Option B — Run locally
+
+```bash
+# Install minimal Python deps
+pip install -r requirements.txt
+
+# Start the proxy server
+python -m uvicorn app.main:app --reload
+
+# Open in any modern browser
+open http://localhost:8000
+```
+
+---
+
+## Using the app
+
+1. **Wait** — the embedding model (`all-MiniLM-L6-v2`, ~23 MB) downloads automatically.
+2. **Pick a model** from the toolbar dropdown and click **Load**.
+   - First load downloads the ONNX model weights (cached by the browser).
+   - WebGPU models are faster on Chrome/Edge; WASM works on all browsers.
+3. **Paste a blog URL** and click **Add Blog** — or pass `?url=<blog-url>` to auto-run.
+4. **Chat** — responses stream token by token. Thinking blocks (`<think>…</think>`) are shown live then collapsed into a summary.
+
+---
+
+## Available models
+
+| Model | Size | Backend | Notes |
+|---|---|---|---|
+| Qwen3-0.6B | ~350 MB | WASM + WebGPU | Default · Alibaba Qwen3, thinking mode |
+| Qwen3-1.7B | ~950 MB | WASM + WebGPU | Larger Qwen3, better quality |
+| Gemma 2 2B | 1.71 GB | WebGPU only | Google, solid reasoning |
+| LFM2.5-1.2B Instruct | ~700 MB | WASM | Liquid AI, fast RAG |
+| LFM2.5-1.2B Thinking | ~700 MB | WASM | Liquid AI, reasoning variant |
+| Gemma 3 270M | ~260 MB | WASM | Tiny, surprisingly capable |
+
+Models with **WASM + WebGPU** use WebGPU automatically when available (Chrome/Edge), falling back to WASM otherwise. Switch manually with the backend selector in the toolbar.
+
+---
+
+## Architecture
+
+```
+chatwithblogs/
+├── .github/
+│   └── workflows/
+│       └── pages.yml    # Auto-deploy app/static/ to GitHub Pages on push to main
+├── app/
+│   ├── main.py          # FastAPI — CORS proxy + static file server (local use only)
+│   └── static/
+│       ├── index.html   # Full SPA: ingestion, RAG, chat — all in-browser
+│       └── .nojekyll    # Disables Jekyll on GitHub Pages
+├── requirements.txt     # fastapi, uvicorn, httpx only
+└── README.md
+```
+
+### Browser stack
+
+| Layer | Library | Notes |
+|---|---|---|
+| Embeddings | [Transformers.js](https://huggingface.co/docs/transformers.js) v3 | ONNX, `Xenova/all-MiniLM-L6-v2` |
+| LLM — WASM | [Transformers.js](https://huggingface.co/docs/transformers.js) v3 | ONNX Runtime Web, all browsers |
+| LLM — WebGPU | [WebLLM](https://github.com/mlc-ai/web-llm) | MLC quantised models, GPU accelerated |
+| Vector search | Pure JS cosine similarity | In-memory, O(n) |
+| Persistence | IndexedDB | Chunks + embeddings survive page refresh |
+| Article parsing | [Readability.js](https://github.com/mozilla/readability) | Mozilla's article extractor |
+| CORS proxy (local) | FastAPI + httpx | Used when running the Python server |
+| CORS proxy (hosted) | [allorigins.win](https://allorigins.win) | Used on GitHub Pages and static hosts |
+
+---
+
+## Browser compatibility
+
+| Browser | Embeddings | LLM (WASM) | LLM (WebGPU) |
+|---|---|---|---|
+| Chrome 113+ | ✓ | ✓ | ✓ |
+| Edge 113+   | ✓ | ✓ | ✓ |
+| Firefox     | ✓ | ✓ | — |
+| Safari      | ✓ | ✓ | — |
 
 ---
 
