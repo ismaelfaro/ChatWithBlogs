@@ -530,6 +530,7 @@ async function initWASM(model, onProg) {
   setStatus('llm', 'Initialising WASM…');
   wllama = new Wllama(WASM_PATHS);
   await wllama.loadModelFromHF(model.wasm.repo, model.wasm.file, {
+    n_ctx: model.n_ctx ?? 8192,   // RAG prompts are large; default wllama n_ctx is too small
     progressCallback: ({ loaded, total }) => {
       onProg(total ? Math.round((loaded / total) * 100) : 0);
     },
